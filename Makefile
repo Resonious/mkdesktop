@@ -1,3 +1,8 @@
 all:
 	cargo build
-.PHONY: all
+
+test:
+	cargo test
+
+.PHONY: all test
+

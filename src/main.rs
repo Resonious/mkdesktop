@@ -1,10 +1,13 @@
 #[macro_use]
 extern crate clap;
+#[macro_use]
+extern crate lazy_static;
 extern crate path_abs;
 extern crate dirs;
 
 pub mod desktop;
 pub mod cli;
+pub mod gui;
 
 fn main() {
     let arg_matches: clap::ArgMatches = clap_app!(myapp =>
@@ -26,7 +29,7 @@ fn main() {
     ).get_matches();
 
     if arg_matches.is_present("gui") {
-        println!("TODO start the GUI");
+        gui::begin();
     }
     else if arg_matches.is_present("status") || !arg_matches.is_present("FILE") {
         println!("Ahh! status. TODO");

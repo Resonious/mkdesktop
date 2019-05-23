@@ -1,5 +1,90 @@
+extern crate regex;
+extern crate lazy_static;
+
 use std::io;
 use std::path::PathBuf;
+
+use regex::{Regex, RegexBuilder};
+
+
+pub struct DesktopEntry {
+    name: String,
+    shortcut_type: String,
+    comment: String,
+    path: String,
+    exec: String,
+    icon: String,
+    terminal: bool,
+    categories: String,
+}
+
+impl DesktopEntry {
+    /// Blank DesktopEntry
+    pub fn blank() -> DesktopEntry {
+        DesktopEntry {
+            name: String::new(),
+            shortcut_type: String::from("Application"),
+            comment: String::new(),
+            path: String::new(),
+            exec: String::new(),
+            icon: String::new(),
+            terminal: false,
+            categories: String::new(),
+        }
+    }
+
+
+    /// Parses DesktopEntry from input stream
+    pub fn new(input: &mut io::BufRead) -> DesktopEntry {
+        lazy_static! {
+            static ref DESKTOP_ATTR: Regex = RegexBuilder::new(r"^([^\[#]+)=([^#]+)(#.*)?$")
+                .build()
+                .expect("Failed to compile DESKTOP_ATTR regex");
+
+            static ref BOOL_REGEX: Regex = RegexBuilder::new(r"true")
+                .case_insensitive(true)
+                .build()
+                .expect("Failed to compile BOOL_REGEX");
+        }
+
+        let mut result = DesktopEntry::blank();
+        let mut line = String::new();
+
+        while let Ok(bytes_read) = input.read_line(&mut line) {
+            if bytes_read == 0 { break }
+
+            let caps = match DESKTOP_ATTR.captures(&line) {
+                Some(c) => c,
+                None    => {
+                    line.clear();
+                    continue;
+                }
+            };
+
+            let field = caps.get(1).unwrap().as_str().trim();
+            let value = caps.get(2).unwrap().as_str().trim();
+
+            println!("Got a cap!    field='{}'   value='{}'", field, value);
+
+            match field {
+                "Type"       => { result.shortcut_type = String::from(value) }
+                "Name"       => { result.name          = String::from(value) }
+                "Comment"    => { result.comment       = String::from(value) }
+                "Path"       => { result.path          = String::from(value) }
+                "Exec"       => { result.exec          = String::from(value) }
+                "Icon"       => { result.icon          = String::from(value) }
+                "Terminal"   => { result.terminal      = BOOL_REGEX.captures(&value).is_some() }
+                "Categories" => { result.categories    = String::from(value) }
+                _ => {}
+            }
+
+            line.clear();
+        }
+
+        result
+    }
+}
+
 
 pub fn applications_dir() -> PathBuf {
     let mut result = PathBuf::new();
@@ -61,4 +146,45 @@ pub fn make_desktop(
     else        { output.write_fmt(format_args!("Terminal=false\n"))? }
 
     Ok(())
+}
+
+
+#[cfg(test)]
+mod test {
+    use super::DesktopEntry;
+    use std::io;
+
+    #[test]
+    fn desktop_entry_can_parse_desktop_format() {
+        let desktop_string = "[Desktop Entry]
+# Taken from https://wiki.archlinux.org/index.php/desktop_entries
+# The type as listed above
+Type=Application
+# The version of the desktop entry specification to which this file complies
+Version=1.0
+# The name of the application
+Name=jMemorize
+# A comment which can/will be used as a tooltip
+Comment=Flash card based learning tool
+# The path to the folder in which the executable is run
+Path=/opt/jmemorise
+# The executable of the application, possibly with arguments.
+Exec=jmemorize
+# The name of the icon that will be used to display this entry
+Icon=jmemorize
+# Describes whether this application needs to be run in a terminal or not
+Terminal=false
+# Describes the categories in which this entry should be shown
+Categories=Education;Languages;Java;";
+        let mut stream = io::Cursor::new(desktop_string);
+        let desktop_entry = DesktopEntry::new(&mut stream);
+
+        assert_eq!(desktop_entry.shortcut_type, "Application");
+        assert_eq!(desktop_entry.comment, "Flash card based learning tool");
+        assert_eq!(desktop_entry.path, "/opt/jmemorise");
+        assert_eq!(desktop_entry.exec, "jmemorize");
+        assert_eq!(desktop_entry.icon, "jmemorize");
+        assert_eq!(desktop_entry.terminal, false);
+        assert_eq!(desktop_entry.categories, "Education;Languages;Java;");
+    }
 }

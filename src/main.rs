@@ -32,8 +32,7 @@ fn main() {
         gui::begin();
     }
     else if arg_matches.is_present("status") || !arg_matches.is_present("FILE") {
-        println!("Ahh! status. TODO");
-        println!("Here's the dir: {:?}", desktop::applications_dir());
+        cli::status(arg_matches);
     }
     else {
         cli::begin(arg_matches);

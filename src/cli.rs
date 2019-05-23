@@ -82,6 +82,21 @@ pub fn begin(arg_matches: clap::ArgMatches) {
 }
 
 
+pub fn status(_arg_matches: clap::ArgMatches) {
+    let desktop_files = match desktop::read_desktop_files() {
+        Ok(x) => x,
+        Err(e) => {
+            println!("Failed to read desktop files: {}", e);
+            process::exit(20);
+        }
+    };
+
+    for entry in desktop_files {
+        println!("{}", entry.display());
+    }
+}
+
+
 fn pwd() -> Option<String> {
     match env::var_os("PWD") {
         Some(value) => Some(String::from(value.to_str().unwrap_or_default())),

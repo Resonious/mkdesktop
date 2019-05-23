@@ -2,6 +2,7 @@ extern crate regex;
 extern crate lazy_static;
 
 use std::io;
+use std::fs;
 use std::path::PathBuf;
 
 use regex::{Regex, RegexBuilder};
@@ -83,6 +84,40 @@ impl DesktopEntry {
 
         result
     }
+
+
+    /// Gets you a nice string representation (doesn't include all info)
+    pub fn display(&self) -> String {
+        if self.path.is_empty() {
+            format!(
+                "{}\n\texec {}",
+                self.name,
+                self.exec
+            )
+        }
+        else {
+            format!(
+                "{}\n\tin {}\n\texec {}",
+                self.name,
+                self.path,
+                self.exec
+            )
+        }
+    }
+
+
+    pub fn write(&self, output: &mut io::Write) -> io::Result<()> {
+        make_desktop(
+            &self.name,
+            &self.comment,
+            &self.path,
+            &self.exec,
+            &self.icon,
+            self.terminal,
+            &self.categories,
+            output
+        )
+    }
 }
 
 
@@ -92,11 +127,38 @@ pub fn applications_dir() -> PathBuf {
     result.push(dirs::data_dir().expect("Couldn't figure out data directory."));
     result.push("applications/mkdesktop");
 
-    // TODO do this creation elsewhere... before the desktop file is written
     let create_dir = result.clone();
-    std::fs::create_dir_all(create_dir).expect("Couldn't create directory to put desktop file in");
+    fs::create_dir_all(create_dir).expect("Couldn't create directory to put desktop file in");
 
     result
+}
+
+
+pub fn read_desktop_files() -> io::Result<Vec<DesktopEntry>> {
+    let mut result = Vec::<DesktopEntry>::new();
+
+    for direntry_result in fs::read_dir(applications_dir())? {
+        let direntry = match direntry_result {
+            Ok(x) => x,
+            Err(e) => {
+                println!("ERROR READING DESKTOP FILE: {}", e);
+                continue;
+            }
+        };
+
+        let file = match fs::File::open(direntry.path()) {
+            Ok(x) => x,
+            Err(e) => {
+                println!("Couldn't open {:?} - {}", direntry.path(), e);
+                continue;
+            }
+        };
+        let mut reader = io::BufReader::new(file);
+
+        result.push(DesktopEntry::new(&mut reader));
+    }
+
+    Ok(result)
 }
 
 

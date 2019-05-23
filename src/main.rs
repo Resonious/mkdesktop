@@ -66,7 +66,7 @@ fn main() {
 
     let icon = match arg_matches.value_of("icon") {
         Some(arg) => match PathAbs::new(arg).expect("Couldn't get icon path").absolute() {
-            Ok(f) => String::from(f.as_path().to_str().expect("Failed to turn icon path into string")),
+            Ok(f)  => String::from(f.as_path().to_str().expect("Failed to turn icon path into string")),
             Err(e) => {
                 println!("Failed to open {} - {}", arg, e);
                 process::exit(2);

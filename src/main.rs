@@ -22,9 +22,13 @@ fn main() {
         (@arg comment:     --tooltip     -t   +takes_value   "Tooltip when user hovers over application in launcher")
         (@arg yes: -y                                        "Create/update desktop entry without asking about anything")
         (@arg status: --status -s                            "View desktop files managed by mkdesktop")
+        (@arg gui:    --gui    -g                            "Start GUI")
     ).get_matches();
 
-    if arg_matches.is_present("status") || !arg_matches.is_present("FILE") {
+    if arg_matches.is_present("gui") {
+        println!("TODO start the GUI");
+    }
+    else if arg_matches.is_present("status") || !arg_matches.is_present("FILE") {
         println!("Ahh! status. TODO");
         println!("Here's the dir: {:?}", desktop::applications_dir());
     }

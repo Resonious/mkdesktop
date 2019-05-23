@@ -97,8 +97,8 @@ fn ask_stdin_for_str(msg: &str, default: Option<String>, skip: bool) -> String {
     };
     if skip { return default_val }
 
-    if default_val.is_empty() { println!("{} (default={})", msg, default_val); }
-    else                      { println!("{}", msg); }
+    if !default_val.is_empty() { println!("{} (default={})", msg, default_val); }
+    else                       { println!("{}", msg); }
 
     let mut user_input = String::new();
 

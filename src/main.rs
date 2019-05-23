@@ -1,34 +1,50 @@
 #[macro_use]
 extern crate clap;
 extern crate path_abs;
+extern crate dirs;
 
 use std::io;
+use std::env;
+use std::path::PathBuf;
 use std::process;
+
 use path_abs::PathAbs;
 
 fn main() {
     let arg_matches: clap::ArgMatches = clap_app!(myapp =>
+        (name: env!("CARGO_PKG_NAME"))
         (version: env!("CARGO_PKG_VERSION"))
         (author:  "Nigel Baillie <metreckk@gmail.com>")
         (about:   "Creates/updates .desktop files in the appropriate location with ease")
 
-        (@arg FILE:                           +required      "Executable file")
+        (@arg FILE:                                          "Executable file")
 
         (@arg name:        --name        -n   +takes_value   "Name of program")
         (@arg icon:        --icon        -i   +takes_value   "Path to icon")
         (@arg categories:  --categories  -c   +takes_value   "Semicolon-separated categories")
         (@arg path:        --path        -p   +takes_value   "Working directory for when <FILE> gets run (defaults to $PWD)")
         (@arg comment:     --tooltip     -t   +takes_value   "Tooltip when user hovers over application in launcher")
-        (@arg status:      --status      -s                  "See if a desktop entry already exists for the given file")
         (@arg yes: -y                                        "Create/update desktop entry without asking about anything")
-        (@arg verbose: --verbose -v                          "Print extra garbage for debugging")
+        (@arg status: --status -s                            "View desktop files managed by mkdesktop")
     ).get_matches();
+
+    if arg_matches.is_present("status") {
+        println!("Ahh! status. TODO");
+        println!("Here's the dir: {:?}", applications_dir());
+        return;
+    }
 
     // Gather information
 
     let yes = arg_matches.is_present("yes");
 
-    let filename = arg_matches.value_of("FILE").unwrap();
+    let filename = match arg_matches.value_of("FILE") {
+        Some(f) => f,
+        None => {
+            println!("Please specify FILE (or pass --help)");
+            process::exit(5);
+        }
+    };
 
     let exec_path = match PathAbs::new(filename).expect("Couldn't get file path").absolute() {
         Ok(f) => f,
@@ -61,7 +77,7 @@ fn main() {
 
     let path = match arg_matches.value_of("path") {
         Some(arg) => String::from(arg),
-        None      => ask_stdin_for_str("Please enter the working directory for the binary", Some(env!("PWD")), yes),
+        None      => ask_stdin_for_str("Please enter the working directory for the binary", pwd(), yes),
     };
 
     let icon = match arg_matches.value_of("icon") {
@@ -92,13 +108,24 @@ fn main() {
     ).expect("Couldn't write the damn thing!!! WHY!!!");
 }
 
-fn ask_stdin_for_str(msg: &str, default: Option<&str>, skip: bool) -> String {
-    if skip { return String::from(default.unwrap_or_default()) }
 
-    match default {
-        Some(default_val) => println!("{} (default={})", msg, default_val),
-        None              => println!("{}", msg),
+fn pwd() -> Option<String> {
+    match env::var_os("PWD") {
+        Some(value) => Some(String::from(value.to_str().unwrap_or_default())),
+        None => None
+    }
+}
+
+
+fn ask_stdin_for_str(msg: &str, default: Option<String>, skip: bool) -> String {
+    let default_val = match default {
+        Some(default_val) => default_val,
+        None              => String::new(),
     };
+    if skip { return default_val }
+
+    if default_val.is_empty() { println!("{} (default={})", msg, default_val); }
+    else                      { println!("{}", msg); }
 
     let mut user_input = String::new();
 
@@ -108,12 +135,26 @@ fn ask_stdin_for_str(msg: &str, default: Option<&str>, skip: bool) -> String {
     user_input = String::from(user_input.trim());
 
     if user_input.is_empty() {
-        String::from(default.unwrap_or_default())
+        default_val
     }
     else {
         user_input
     }
 }
+
+
+fn applications_dir() -> PathBuf {
+    let mut result = PathBuf::new();
+
+    result.push(dirs::data_dir().expect("Couldn't figure out data directory."));
+    result.push("applications/mkdesktop");
+
+    let create_dir = result.clone();
+    std::fs::create_dir_all(create_dir).expect("Couldn't create directory to put desktop file in");
+
+    result
+}
+
 
 fn make_desktop(
     name: &str,

@@ -1,0 +1,9 @@
+[package]
+name = "mkdesktop"
+version = "0.1.0"
+authors = ["Nigel Baillie <metreckk@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+clap = "~2.27.0"
+path_abs = "~0.4"

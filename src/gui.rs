@@ -1,7 +1,7 @@
 extern crate gtk;
 
 use gtk::prelude::*;
-use gtk::{Window, HeaderBar, FileChooser, Image};
+use gtk::{Window, HeaderBar, FileChooserButton, FileChooser, Image};
 use gdk_pixbuf::Pixbuf;
 
 use std::process;
@@ -23,8 +23,8 @@ pub fn begin() {
     //
     /////////////////////////////////////////////////////////
 
-    let window:  Window      = builder.get_object("new_entry_window").expect("Window not found in GUI resource");
-    let chooser: FileChooser = builder.get_object("icon_chooser")    .expect("File chooser not found in GUI resource");
+    let window:  Window            = builder.get_object("new_entry_window")   .expect("Window not found in GUI resource");
+    let chooser: FileChooserButton = builder.get_object("icon_chooser_button").expect("File chooser not found in GUI resource");
 
 
     /////////////////////////////////////////////////////////
@@ -33,7 +33,7 @@ pub fn begin() {
     //
     /////////////////////////////////////////////////////////
 
-    chooser.connect_selection_changed(|chooser| {
+    chooser.connect_update_preview(|chooser| {
         let preview: Image = match chooser.get_preview_widget() {
             Some(widget) => widget.dynamic_cast().expect("Chooser preview image wasn't an Image"),
             None => return
@@ -50,7 +50,7 @@ pub fn begin() {
         let pixbuf = match Pixbuf::new_from_file_at_scale(
             preview_filename,
             128, 128,
-            false
+            true
         ) {
             Ok(x) => x,
             Err(_e) => {

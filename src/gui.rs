@@ -1,7 +1,8 @@
 extern crate gtk;
 
 use gtk::prelude::*;
-use gtk::{Window, HeaderBar};
+use gtk::{Window, HeaderBar, FileChooser, Image};
+use gdk_pixbuf::Pixbuf;
 
 use std::process;
 
@@ -15,7 +16,53 @@ pub fn begin() {
 
     let builder = gtk::Builder::new_from_string(NEW_ENTRY_GLADE);
 
-    let window: Window = builder.get_object("new_entry_window").expect("New-entry GUI didn't have a window");
+
+    /////////////////////////////////////////////////////////
+    //
+    //               EXTRACT WIDGETS OF INTEREST
+    //
+    /////////////////////////////////////////////////////////
+
+    let window:  Window      = builder.get_object("new_entry_window").expect("Window not found in GUI resource");
+    let chooser: FileChooser = builder.get_object("icon_chooser")    .expect("File chooser not found in GUI resource");
+
+
+    /////////////////////////////////////////////////////////
+    //
+    //               FILE CHOOSER AND ICON PREVIEW
+    //
+    /////////////////////////////////////////////////////////
+
+    chooser.connect_selection_changed(|chooser| {
+        let preview: Image = match chooser.get_preview_widget() {
+            Some(widget) => widget.dynamic_cast().expect("Chooser preview image wasn't an Image"),
+            None => return
+        };
+
+        let preview_filename = match chooser.get_preview_filename() {
+            Some(filename) => filename,
+            None => {
+                preview.set_visible(false);
+                return;
+            }
+        };
+
+        let pixbuf = match Pixbuf::new_from_file_at_scale(
+            preview_filename,
+            128, 128,
+            false
+        ) {
+            Ok(x) => x,
+            Err(_e) => {
+                preview.set_visible(false);
+                return;
+            }
+        };
+
+        preview.set_from_pixbuf(Some(&pixbuf));
+        preview.set_visible(true);
+    });
+
 
     /////////////////////////////////////////////////////////
     //

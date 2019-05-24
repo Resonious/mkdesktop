@@ -230,6 +230,7 @@ Name=jMemorize
 Comment=Flash card based learning tool
 # The path to the folder in which the executable is run
 Path=/opt/jmemorise
+
 # The executable of the application, possibly with arguments.
 Exec=jmemorize
 # The name of the icon that will be used to display this entry

@@ -1,9 +1,11 @@
 extern crate gtk;
 
 use gtk::prelude::*;
-use gtk::{Button, Window, WindowType, HeaderBar};
+use gtk::{Window, HeaderBar};
 
 use std::process;
+
+include!(concat!(env!("OUT_DIR"), "/new-entry.glade.rs"));
 
 pub fn begin() {
     if gtk::init().is_err() {
@@ -11,15 +13,9 @@ pub fn begin() {
         process::exit(10);
     }
 
+    let builder = gtk::Builder::new_from_string(NEW_ENTRY_GLADE);
 
-    /////////////////////////////////////////////////////////
-    //
-    //                   MAIN WINDOW
-    //
-    /////////////////////////////////////////////////////////
-    let window = Window::new(WindowType::Toplevel);
-    window.set_title("mkdesktop GUI");
-
+    let window: Window = builder.get_object("new_entry_window").expect("New-entry GUI didn't have a window");
 
     /////////////////////////////////////////////////////////
     //
@@ -30,36 +26,19 @@ pub fn begin() {
     header_bar.set_show_close_button(true);
     header_bar.set_title("Desktop Launcher Manager");
     header_bar.set_has_subtitle(false);
+
     window.set_titlebar(Some(&header_bar));
 
-
-    /////////////////////////////////////////////////////////
-    //
-    //                   BOX AND BUTTON
-    //
-    /////////////////////////////////////////////////////////
-    let vbox = gtk::Box::new(gtk::Orientation::Vertical, 8);
-    let button = Button::new_with_label("Click me!");
-    vbox.add(&button);
-
-
-    /////////////////////////////////////////////////////////
-    //
-    //                    WINDOW CHILDREN
-    //
-    /////////////////////////////////////////////////////////
-    window.add(&vbox);
     window.show_all();
-
 
     window.connect_delete_event(|_, _| {
         gtk::main_quit();
         Inhibit(false)
     });
 
-    button.connect_clicked(|_| {
-        println!("Clicked!");
-    });
+    //button.connect_clicked(|_| {
+    //    println!("Clicked!");
+    //});
 
     gtk::main();
 }

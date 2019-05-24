@@ -1,12 +1,33 @@
 extern crate gtk;
 
 use gtk::prelude::*;
-use gtk::{Window, HeaderBar, FileChooserButton, FileChooser, Image};
+use gtk::{Window, HeaderBar, FileChooserButton, Image, Label};
 use gdk_pixbuf::Pixbuf;
 
 use std::process;
+use std::path::PathBuf;
 
 include!(concat!(env!("OUT_DIR"), "/new-entry.glade.rs"));
+
+const ICON_PREVIEW_SIZE: i32 = 128;
+
+
+fn set_icon_preview(image: &Image, preview_filename: PathBuf, size: i32) {
+    let pixbuf = match Pixbuf::new_from_file_at_scale(
+        preview_filename,
+        size, size,
+        true
+    ) {
+        Ok(x) => x,
+        Err(_e) => {
+            image.set_visible(false);
+            return;
+        }
+    };
+
+    image.set_from_pixbuf(Some(&pixbuf));
+}
+
 
 pub fn begin() {
     if gtk::init().is_err() {
@@ -26,10 +47,15 @@ pub fn begin() {
     let window:  Window            = builder.get_object("new_entry_window")   .expect("Window not found in GUI resource");
     let chooser: FileChooserButton = builder.get_object("icon_chooser_button").expect("File chooser not found in GUI resource");
 
+    let name_entry: gtk::Entry = builder.get_object("name_entry").expect("Name entry not found in GUI resource");
+
+    let preview_icon = builder.get_object::<Image>("preview_icon").expect("Preview icon not found in GUI resource");
+    let preview_text = builder.get_object::<Label>("preview_name").expect("Preview name not found in GUI resource");
+
 
     /////////////////////////////////////////////////////////
     //
-    //               FILE CHOOSER AND ICON PREVIEW
+    //               FILE CHOOSER AND ICON PREVIEWS
     //
     /////////////////////////////////////////////////////////
 
@@ -47,20 +73,24 @@ pub fn begin() {
             }
         };
 
-        let pixbuf = match Pixbuf::new_from_file_at_scale(
-            preview_filename,
-            128, 128,
-            true
-        ) {
-            Ok(x) => x,
-            Err(_e) => {
-                preview.set_visible(false);
-                return;
-            }
+        set_icon_preview(&preview, preview_filename, ICON_PREVIEW_SIZE);
+        preview.set_visible(true);
+    });
+
+    chooser.connect_selection_changed(move |chooser| {
+        let preview_filename = match chooser.get_filename() {
+            Some(filename) => filename,
+            None => return
         };
 
-        preview.set_from_pixbuf(Some(&pixbuf));
-        preview.set_visible(true);
+        set_icon_preview(&preview_icon, preview_filename, ICON_PREVIEW_SIZE);
+    });
+
+    name_entry.connect_changed(move |entry| {
+        match entry.get_text() {
+            Some(text) => preview_text.set_text(&text),
+            None       => preview_text.set_text("")
+        }
     });
 
 
@@ -69,6 +99,7 @@ pub fn begin() {
     //                    HEADER BAR
     //
     /////////////////////////////////////////////////////////
+
     let header_bar = HeaderBar::new();
     header_bar.set_show_close_button(true);
     header_bar.set_title("Desktop Launcher Manager");

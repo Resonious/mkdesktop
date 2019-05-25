@@ -56,23 +56,35 @@ impl DesktopEntry {
     /// Parses DesktopEntry from input stream
     pub fn new(input: &mut io::BufRead) -> DesktopEntry {
         lazy_static! {
-            static ref DESKTOP_ATTR: Regex = RegexBuilder::new(r"^([^\[#]+)=([^#]+)(#.*)?$")
-                .build()
-                .expect("Failed to compile DESKTOP_ATTR regex");
+            static ref CATEGORY_REGEX: Regex = RegexBuilder::new(r"^\[([^\]]+)\]")
+                .build().unwrap();
+
+            static ref ATTR_REGEX: Regex = RegexBuilder::new(r"^([^\[#]+)=([^#]+)(#.*)?$")
+                .build().unwrap();
 
             static ref BOOL_REGEX: Regex = RegexBuilder::new(r"true")
                 .case_insensitive(true)
-                .build()
-                .expect("Failed to compile BOOL_REGEX");
+                .build().unwrap();
         }
 
         let mut result = DesktopEntry::blank();
         let mut line = String::new();
+        let mut currently_reading_desktop_entry = false;
 
         while let Ok(bytes_read) = input.read_line(&mut line) {
             if bytes_read == 0 { break }
 
-            let caps = match DESKTOP_ATTR.captures(&line) {
+            match CATEGORY_REGEX.captures(&line) {
+                Some(category_cap) => {
+                    let category = category_cap.get(1).unwrap().as_str();
+                    currently_reading_desktop_entry = category == "Desktop Entry";
+                }
+                None => {}
+            }
+
+            if !currently_reading_desktop_entry { line.clear(); continue }
+
+            let caps = match ATTR_REGEX.captures(&line) {
                 Some(c) => c,
                 None    => {
                     line.clear();
@@ -293,6 +305,13 @@ pub fn make_desktop(
 
     if terminal { output.write_fmt(format_args!("Terminal=true\n"))? }
     else        { output.write_fmt(format_args!("Terminal=false\n"))? }
+
+    // Actions
+    output.write_fmt(format_args!("Actions=delete-shortcut\n"))?;
+
+    output.write_fmt(format_args!("\n[Desktop Action delete-shortcut]\n"))?;
+    output.write_fmt(format_args!("Name=Delete Shortcut\n"))?;
+    output.write_fmt(format_args!("Exec=rm {:?}\n", name_to_desktop_file_path(name)))?;
 
     Ok(())
 }

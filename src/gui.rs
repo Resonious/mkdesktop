@@ -1,8 +1,11 @@
 extern crate gtk;
+extern crate gdk_pixbuf;
+extern crate glib;
 
 use gtk::prelude::*;
 use gtk::{Window, HeaderBar, FileChooserButton, Image, Label, Button};
 use gdk_pixbuf::Pixbuf;
+use glib::GString;
 
 use std::io;
 use std::process;
@@ -52,10 +55,12 @@ pub fn begin() {
 
     let name_entry: gtk::Entry = builder.get_object("name_entry").expect("Name entry not found in GUI resource");
 
-    let name_entry2: gtk::Entry = builder.get_object("name_entry").expect("Name entry not found in GUI resource");
     let path_entry: FileChooserButton = builder.get_object("path_chooser").expect("Path chooser not found in GUI resource");
     let exec_entry: gtk::Entry = builder.get_object("exec_entry").expect("Exec entry not found in GUI resource");
     let icon_entry: FileChooserButton = builder.get_object("icon_chooser_button").expect("Icon chooser not found in GUI resource");
+
+    let comment_entry: gtk::Entry = builder.get_object("comment_entry").expect("Comment entry not found in GUI resource");
+    let categories_entry: gtk::Entry = builder.get_object("categories_entry").expect("Categories entry not found in GUI resource");
 
     let preview_icon: Image = builder.get_object("preview_icon").expect("Preview icon not found in GUI resource");
     let preview_text: Label = builder.get_object("preview_name").expect("Preview name not found in GUI resource");
@@ -128,7 +133,7 @@ pub fn begin() {
         // TODO don't just spit to stdout
         let mut stdout = io::stdout();
 
-        let name = name_entry2.get_text().expect("Please have name");
+        let name = name_entry.get_text().expect("Please have name");
         let exec = exec_entry.get_text().expect("Please have command");
 
         let path_path = path_entry.get_filename().expect("Please have name");
@@ -137,14 +142,17 @@ pub fn begin() {
         let icon_path = icon_entry.get_filename().expect("Please have icon");
         let icon = icon_path.to_str().expect("Couldn't get string from path");
 
+        let comment = comment_entry.get_text();
+        let categories = categories_entry.get_text();
+
         desktop::make_desktop(
             &name,
-            "",
+            &comment.unwrap_or(GString::from("")),
             &path,
             &exec,
             &icon,
             false,
-            "",
+            &categories.unwrap_or(GString::from("")),
             &mut stdout
         ).expect("Couldn't write the damn thing!!! WHY!!!");
     });

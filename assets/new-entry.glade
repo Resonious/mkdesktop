@@ -76,7 +76,7 @@
         </child>
         <child>
           <object class="GtkGrid" id="form_grid">
-            <property name="name">form_grid</property>
+            <property name="name">Form grid</property>
             <property name="visible">True</property>
             <property name="can_focus">False</property>
             <property name="margin_left">20</property>
@@ -210,6 +210,93 @@
           </packing>
         </child>
         <child>
+          <object class="GtkExpander">
+            <property name="visible">True</property>
+            <property name="can_focus">True</property>
+            <property name="margin_left">20</property>
+            <property name="margin_right">20</property>
+            <child>
+              <object class="GtkGrid" id="form_grid2">
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <property name="margin_bottom">20</property>
+                <property name="row_spacing">8</property>
+                <property name="column_spacing">8</property>
+                <child>
+                  <object class="GtkLabel" id="comment_label">
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="halign">end</property>
+                    <property name="margin_left">20</property>
+                    <property name="margin_right">20</property>
+                    <property name="label" translatable="yes">Description:</property>
+                    <property name="justify">right</property>
+                  </object>
+                  <packing>
+                    <property name="left_attach">0</property>
+                    <property name="top_attach">0</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkLabel" id="categories_label">
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="halign">end</property>
+                    <property name="margin_left">20</property>
+                    <property name="margin_right">20</property>
+                    <property name="label" translatable="yes">Categories:</property>
+                    <property name="justify">right</property>
+                  </object>
+                  <packing>
+                    <property name="left_attach">0</property>
+                    <property name="top_attach">1</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkEntry" id="categories_entry">
+                    <property name="visible">True</property>
+                    <property name="can_focus">True</property>
+                    <property name="tooltip_text" translatable="yes">This is the "Categories" field of the desktop entry. It's supposed to be a semicolon-separated list of words with no spaces.</property>
+                    <property name="valign">center</property>
+                    <property name="hexpand">True</property>
+                    <property name="placeholder_text" translatable="yes">Education;Languages;Tools; (Example)</property>
+                    <property name="input_hints">GTK_INPUT_HINT_UPPERCASE_WORDS | GTK_INPUT_HINT_NONE</property>
+                  </object>
+                  <packing>
+                    <property name="left_attach">1</property>
+                    <property name="top_attach">1</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkEntry" id="comment_entry">
+                    <property name="visible">True</property>
+                    <property name="can_focus">True</property>
+                    <property name="tooltip_text" translatable="yes">This is the "Comment" field of the desktop entry.</property>
+                    <property name="valign">center</property>
+                    <property name="hexpand">True</property>
+                  </object>
+                  <packing>
+                    <property name="left_attach">1</property>
+                    <property name="top_attach">0</property>
+                  </packing>
+                </child>
+              </object>
+            </child>
+            <child type="label">
+              <object class="GtkLabel">
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <property name="label" translatable="yes">Additional Fields</property>
+              </object>
+            </child>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">True</property>
+            <property name="position">2</property>
+          </packing>
+        </child>
+        <child>
           <object class="GtkBox" id="preview">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
@@ -244,7 +331,7 @@
           <packing>
             <property name="expand">False</property>
             <property name="fill">True</property>
-            <property name="position">2</property>
+            <property name="position">3</property>
           </packing>
         </child>
       </object>

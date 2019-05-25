@@ -25,7 +25,7 @@ fn set_icon_preview(image: &Image, preview_filename: PathBuf, size: i32) {
     let pixbuf = match Pixbuf::new_from_file_at_scale(
         preview_filename,
         size, size,
-        true
+        false // Preserve aspect ratio
     ) {
         Ok(x) => x,
         Err(_e) => {
@@ -179,12 +179,15 @@ pub fn editor(entry: Option<io::Result<DesktopEntry>>) {
 
         let path_path = path_entry.get_filename();
         let path = match path_path {
-            Some(val) => Some(String::from(val.to_str().expect("Couldn't get string from path"))),
+            Some(val) => Some(String::from(val.to_str().expect("Couldn't get string from path path"))),
             None      => None
         };
 
-        let icon_path = icon_entry.get_filename().expect("Please have icon");
-        let icon = icon_path.to_str().expect("Couldn't get string from path");
+        let icon_path = icon_entry.get_filename();
+        let icon = match icon_path {
+            Some(val) => Some(String::from(val.to_str().expect("Couldn't get string from icon path"))),
+            None      => None
+        };
 
         let comment = comment_entry.get_text();
         let categories = categories_entry.get_text();
@@ -203,7 +206,7 @@ pub fn editor(entry: Option<io::Result<DesktopEntry>>) {
             &comment.unwrap_or(GString::from("")),
             &path.unwrap_or_default(),
             &exec,
-            &icon,
+            &icon.unwrap_or_default(),
             false,
             &categories.unwrap_or(GString::from("")),
             &mut file

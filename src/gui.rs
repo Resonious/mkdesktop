@@ -1,11 +1,14 @@
 extern crate gtk;
 
 use gtk::prelude::*;
-use gtk::{Window, HeaderBar, FileChooserButton, Image, Label};
+use gtk::{Window, HeaderBar, FileChooserButton, Image, Label, Button};
 use gdk_pixbuf::Pixbuf;
 
+use std::io;
 use std::process;
 use std::path::PathBuf;
+
+use super::desktop;
 
 include!(concat!(env!("OUT_DIR"), "/new-entry.glade.rs"));
 
@@ -49,8 +52,16 @@ pub fn begin() {
 
     let name_entry: gtk::Entry = builder.get_object("name_entry").expect("Name entry not found in GUI resource");
 
-    let preview_icon = builder.get_object::<Image>("preview_icon").expect("Preview icon not found in GUI resource");
-    let preview_text = builder.get_object::<Label>("preview_name").expect("Preview name not found in GUI resource");
+    let name_entry2: gtk::Entry = builder.get_object("name_entry").expect("Name entry not found in GUI resource");
+    let path_entry: FileChooserButton = builder.get_object("path_chooser").expect("Path chooser not found in GUI resource");
+    let exec_entry: gtk::Entry = builder.get_object("exec_entry").expect("Exec entry not found in GUI resource");
+    let icon_entry: FileChooserButton = builder.get_object("icon_chooser_button").expect("Icon chooser not found in GUI resource");
+
+    let preview_icon: Image = builder.get_object("preview_icon").expect("Preview icon not found in GUI resource");
+    let preview_text: Label = builder.get_object("preview_name").expect("Preview name not found in GUI resource");
+
+    let create_button: Button = builder.get_object("create_button").expect("Create button not found in GUI resource");
+    let cancel_button: Button = builder.get_object("cancel_button").expect("Create button not found in GUI resource");
 
 
     /////////////////////////////////////////////////////////
@@ -80,7 +91,7 @@ pub fn begin() {
     chooser.connect_selection_changed(move |chooser| {
         let preview_filename = match chooser.get_filename() {
             Some(filename) => filename,
-            None => return
+            None           => return
         };
 
         set_icon_preview(&preview_icon, preview_filename, ICON_PREVIEW_SIZE);
@@ -96,16 +107,71 @@ pub fn begin() {
 
     /////////////////////////////////////////////////////////
     //
+    //                   BUTTON EVENTS
+    //
+    /////////////////////////////////////////////////////////
+
+    cancel_button.connect_clicked(|button| {
+        let toplevel = match button.get_toplevel() {
+            Some(top) => top,
+            None      => return
+        };
+
+        match toplevel.dynamic_cast::<Window>() {
+            Ok(window) => window.close(),
+            Err(_)     => return
+        }
+    });
+
+    create_button.connect_clicked(move |_| {
+        // TODO actual validation of input
+        // TODO don't just spit to stdout
+        let mut stdout = io::stdout();
+
+        let name = name_entry2.get_text().expect("Please have name");
+        let exec = exec_entry.get_text().expect("Please have command");
+
+        let path_path = path_entry.get_filename().expect("Please have name");
+        let path = path_path.to_str().expect("Couldn't get string from path");
+
+        let icon_path = icon_entry.get_filename().expect("Please have icon");
+        let icon = icon_path.to_str().expect("Couldn't get string from path");
+
+        desktop::make_desktop(
+            &name,
+            "",
+            &path,
+            &exec,
+            &icon,
+            false,
+            "",
+            &mut stdout
+        ).expect("Couldn't write the damn thing!!! WHY!!!");
+    });
+
+
+    /////////////////////////////////////////////////////////
+    //
     //                    HEADER BAR
     //
     /////////////////////////////////////////////////////////
 
     let header_bar = HeaderBar::new();
-    header_bar.set_show_close_button(true);
+    header_bar.set_show_close_button(false);
     header_bar.set_title("Desktop Launcher Manager");
     header_bar.set_has_subtitle(false);
 
+    header_bar.pack_start(&cancel_button);
+    header_bar.pack_end(&create_button);
+
     window.set_titlebar(Some(&header_bar));
+
+
+    /////////////////////////////////////////////////////////
+    //
+    //                    SHOW WINDOW
+    //
+    /////////////////////////////////////////////////////////
 
     window.show_all();
 
@@ -113,10 +179,6 @@ pub fn begin() {
         gtk::main_quit();
         Inhibit(false)
     });
-
-    //button.connect_clicked(|_| {
-    //    println!("Clicked!");
-    //});
 
     gtk::main();
 }

@@ -45,6 +45,7 @@ pub fn create_or_update(entry_result: Option<io::Result<DesktopEntry>>, arg_matc
         None => error_out("Please specify a file or an entry (see --help)")
     };
 
+    // TODO this breaks when loading up an existing entry
     let exec_path = match PathAbs::new(&filename).expect("Couldn't get file path").absolute() {
         Ok(f)  => f,
         Err(e) => error_out(&format!("Failed to open {} - {}", &filename, e))

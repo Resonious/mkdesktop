@@ -33,6 +33,8 @@ fn main() {
         Some(selector) => Some(desktop::select(&selector)),
         None           => None
     };
+    // TODO move cli::create_or_update's entry creation here, and allow new entries to be constructed for any
+    // command (it'll have to be marked as "new" of course)
 
     if arg_matches.is_present("gui") {
         gui::editor(entry);

@@ -8,12 +8,11 @@ use gdk_pixbuf::Pixbuf;
 use glib::GString;
 
 use std::io;
-use std::fs;
 use std::process;
 use std::path::PathBuf;
 use std::error::Error;
 
-use super::desktop::{self, DesktopEntry};
+use super::desktop::DesktopEntry;
 
 include!(concat!(env!("OUT_DIR"), "/new-entry.glade.rs"));
 include!(concat!(env!("OUT_DIR"), "/error-dialog.glade.rs"));
@@ -192,36 +191,29 @@ pub fn editor(entry: Option<io::Result<DesktopEntry>>) {
         let comment = comment_entry.get_text();
         let categories = categories_entry.get_text();
 
-
-        let mut file = match fs::File::create(desktop::name_to_desktop_file_path(&name)) {
-            Ok(f) => f,
+        let new_entry = DesktopEntry::new(
+            &name,
+            &comment.unwrap_or(GString::from("")),
+            &path.unwrap_or_default(),
+            &exec,
+            &icon.unwrap_or_default(),
+            &categories.unwrap_or(GString::from(""))
+        );
+        
+        // Write result and save
+        match new_entry.write_to_apps_dir() {
+            Ok(()) => {}
             Err(error) => {
                 error_dialog(error.description());
                 return;
             }
         };
 
-        match desktop::make_desktop(
-            &name,
-            &comment.unwrap_or(GString::from("")),
-            &path.unwrap_or_default(),
-            &exec,
-            &icon.unwrap_or_default(),
-            false,
-            &categories.unwrap_or(GString::from("")),
-            &mut file
-        ) {
-            Ok(()) => {}
-            Err(error) => {
-                error_dialog(error.description());
-                return;
-            }
-        }
-
+        // Delete old entry if we were doing an edit and the name changed.
         match &old_entry_to_delete {
-            Some(entry) => {
-                if entry.get_name() != name {
-                    match entry.delete() {
+            Some(old_entry) => {
+                if old_entry.filename() != new_entry.filename() {
+                    match old_entry.delete() {
                         Ok(()) => {}
                         Err(error) => {
                             error_dialog(&format!(

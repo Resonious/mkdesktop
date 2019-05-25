@@ -4,6 +4,7 @@ extern crate lazy_static;
 use std::io;
 use std::fs;
 use std::path::PathBuf;
+use std::process::Command;
 
 use regex::{Regex, RegexBuilder};
 
@@ -170,18 +171,41 @@ impl DesktopEntry {
     }
 
 
+    pub fn save(&self) -> io::Result<()> {
+        let filepath = self.filepath();
+        let path = match filepath.to_str() {
+            Some(s) => s,
+            None => return Err(io::Error::new(io::ErrorKind::Other, "Failed to turn path into string"))
+        };
+
+        match Command::new("xdg-desktop-menu").args(&["install", path]).status() {
+            Ok(_)  => Ok(()),
+            Err(e) => return Err(e)
+        }
+    }
+
+
     pub fn write_to_apps_dir(&self) -> io::Result<()> {
-        let mut path = applications_dir();
+        let mut path = data_dir();
         path.push(self.filename());
 
         let mut file = fs::File::create(path)?;
-        self.write(&mut file)
+        self.write(&mut file)?;
+        self.save()
     }
 
 
     pub fn delete(&self) -> io::Result<()> {
-        let mut path = applications_dir();
-        path.push(self.filename());
+        let filename = self.filename();
+
+        // First, uninstall the desktop entry
+        let _uninstall = Command::new("xdg-desktop-menu")
+            .args(&["uninstall", &filename])
+            .status()?;
+
+        // Next, delete the desktop entry
+        let mut path = data_dir();
+        path.push(filename);
         fs::remove_file(path)
     }
 }
@@ -189,27 +213,30 @@ impl DesktopEntry {
 
 pub fn name_to_filename(name: &str) -> String {
     lazy_static! {
-        static ref NON_FILE_CHAR: Regex = RegexBuilder::new(r"[^\w\-. ]+")
+        static ref INVALIDS: Regex = RegexBuilder::new(r"[^\w\-\+_]+")
             .build()
             .expect("Failed to compile filename regex");
     }
 
-    NON_FILE_CHAR.replace_all(name, "-").to_string() + ".desktop"
+    let mut result: String = "mkdesktop-".to_string();
+    result += &INVALIDS.replace_all(name, "-").to_string();
+    result += ".desktop";
+    result
 }
 
 
 pub fn name_to_desktop_file_path(name: &str) -> PathBuf {
-    let mut path = applications_dir();
+    let mut path = data_dir();
     path.push(name_to_filename(name));
     path
 }
 
 
-pub fn applications_dir() -> PathBuf {
+pub fn data_dir() -> PathBuf {
     let mut result = PathBuf::new();
 
     result.push(dirs::data_dir().expect("Couldn't figure out data directory."));
-    result.push("applications/mkdesktop");
+    result.push("mkdesktop");
 
     let create_dir = result.clone();
     fs::create_dir_all(create_dir).expect("Couldn't create directory to put desktop file in");
@@ -258,7 +285,7 @@ pub fn select(selector: &str) -> io::Result<DesktopEntry> {
 pub fn read_desktop_files() -> io::Result<Vec<DesktopEntry>> {
     let mut result = Vec::<DesktopEntry>::new();
 
-    for direntry_result in fs::read_dir(applications_dir())? {
+    for direntry_result in fs::read_dir(data_dir())? {
         let direntry = match direntry_result {
             Ok(x) => x,
             Err(e) => {
@@ -333,8 +360,11 @@ pub fn make_desktop(
 
     output.write_fmt(format_args!("\n[Desktop Action delete-shortcut]\n"))?;
     output.write_fmt(format_args!("Name=Delete Shortcut\n"))?;
+    // TODO this won't work anymore because of the 'xdg-desktop-menu install' thing
     output.write_fmt(format_args!("Exec=rm {:?}\n", name_to_desktop_file_path(name)))?;
 
+    // Done -- flush output
+    output.flush()?;
     Ok(())
 }
 

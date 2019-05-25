@@ -8,6 +8,7 @@ use std::path::PathBuf;
 use regex::{Regex, RegexBuilder};
 
 
+#[derive(Clone)]
 pub struct DesktopEntry {
     name: String,
     shortcut_type: String,
@@ -33,6 +34,23 @@ impl DesktopEntry {
             categories: String::new(),
         }
     }
+
+
+    pub fn filename(&self) -> String {
+        name_to_filename(&self.name)
+    }
+
+    pub fn filepath(&self) -> PathBuf {
+        name_to_desktop_file_path(&self.name)
+    }
+
+
+    pub fn get_name(&self) -> &str { return &self.name; }
+    pub fn get_comment(&self) -> &str { return &self.comment; }
+    pub fn get_path(&self) -> &str { return &self.path; }
+    pub fn get_exec(&self) -> &str { return &self.exec; }
+    pub fn get_icon(&self) -> &str { return &self.icon; }
+    pub fn get_categories(&self) -> &str { return &self.categories; }
 
 
     /// Parses DesktopEntry from input stream
@@ -65,8 +83,6 @@ impl DesktopEntry {
             let field = caps.get(1).unwrap().as_str().trim();
             let value = caps.get(2).unwrap().as_str().trim();
 
-            println!("Got a cap!    field='{}'   value='{}'", field, value);
-
             match field {
                 "Type"       => { result.shortcut_type = String::from(value) }
                 "Name"       => { result.name          = String::from(value) }
@@ -97,7 +113,7 @@ impl DesktopEntry {
         }
         else {
             format!(
-                "{}\n\tin {}\n\texec {}",
+                "{}\n\tcd {}\n\texec {}",
                 self.name,
                 self.path,
                 self.exec
@@ -118,6 +134,40 @@ impl DesktopEntry {
             output
         )
     }
+
+
+    pub fn write_to_apps_dir(&self) -> io::Result<()> {
+        let mut path = applications_dir();
+        path.push(self.filename());
+
+        let mut file = fs::File::create(path)?;
+        self.write(&mut file)
+    }
+
+
+    pub fn delete(&self) -> io::Result<()> {
+        let mut path = applications_dir();
+        path.push(self.filename());
+        fs::remove_file(path)
+    }
+}
+
+
+pub fn name_to_filename(name: &str) -> String {
+    lazy_static! {
+        static ref NON_FILE_CHAR: Regex = RegexBuilder::new(r"[^\w\-. ]+")
+            .build()
+            .expect("Failed to compile filename regex");
+    }
+
+    NON_FILE_CHAR.replace_all(name, "-").to_string() + ".desktop"
+}
+
+
+pub fn name_to_desktop_file_path(name: &str) -> PathBuf {
+    let mut path = applications_dir();
+    path.push(name_to_filename(name));
+    path
 }
 
 
@@ -131,6 +181,43 @@ pub fn applications_dir() -> PathBuf {
     fs::create_dir_all(create_dir).expect("Couldn't create directory to put desktop file in");
 
     result
+}
+
+
+pub fn select(selector: &str) -> io::Result<DesktopEntry> {
+    lazy_static! {
+        static ref INDEX_SELECTOR: Regex = RegexBuilder::new(r"[\(\)\{\}\[\]\s]*(\d+)[\(\)\{\}\[\]\s]*")
+            .build().unwrap();
+    }
+
+    let entries = read_desktop_files()?;
+
+    //
+    // First, see if the selector is just an index
+    //
+    if let Some(caps) = INDEX_SELECTOR.captures(selector) {
+        let index_str = caps.get(1).unwrap().as_str();
+        if let Ok(index) = index_str.parse::<usize>() {
+            if index < entries.len() {
+                return Ok(entries[index].clone());
+            }
+            else {
+                return Err(io::Error::new(io::ErrorKind::NotFound, format!("No entry at index {}", index)))
+            }
+        }
+    }
+
+    //
+    // Otherwise, try to match on filename or entry name
+    //
+    let trimmed_selector = selector.trim();
+    for entry in entries {
+        if entry.filename() == selector || entry.name == trimmed_selector {
+            return Ok(entry);
+        }
+    }
+
+    Err(io::Error::new(io::ErrorKind::NotFound, format!("Couldn't find entry matching \"{}\"", selector)))
 }
 
 

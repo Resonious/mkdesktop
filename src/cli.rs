@@ -2,11 +2,12 @@ extern crate clap;
 
 use std::io;
 use std::env;
+use std::fs::File;
 use std::process;
 
 use path_abs::PathAbs;
 
-use super::desktop;
+use super::desktop::{self, DesktopEntry};
 
 pub fn begin(arg_matches: clap::ArgMatches) {
     let yes = arg_matches.is_present("yes");
@@ -66,8 +67,9 @@ pub fn begin(arg_matches: clap::ArgMatches) {
 
 
     // Write desktop file
+    // TODO if --entry= is present, maybe we should be sure to delete it
 
-    let mut stdout = io::stdout();
+    let mut file = File::create(desktop::name_to_desktop_file_path(&name)).expect("Failed to create desktop file");
 
     desktop::make_desktop(
         &name,
@@ -77,22 +79,62 @@ pub fn begin(arg_matches: clap::ArgMatches) {
         &icon,
         false,
         &categories,
-        &mut stdout
+        &mut file
     ).expect("Couldn't write the damn thing!!! WHY!!!");
 }
 
 
-pub fn status(_arg_matches: clap::ArgMatches) {
-    let desktop_files = match desktop::read_desktop_files() {
-        Ok(x) => x,
-        Err(e) => {
-            println!("Failed to read desktop files: {}", e);
-            process::exit(20);
+pub fn status(arg_matches: clap::ArgMatches) {
+    match arg_matches.value_of("entry") {
+        //
+        // When an entry is selected,
+        //   print the whole desktop file to STDOUT
+        //
+        Some(selector) => {
+            let entry = get_entry_or_error_out(selector);
+            let mut stdout = io::stdout();
+            println!("# {:?}", entry.filepath());
+            match entry.write(&mut stdout) {
+                Ok(()) => {}
+                Err(error) => {
+                    println!("Failed to print entry to stdout: {:?}", error);
+                    process::exit(21);
+                }
+            }
         }
-    };
+        //
+        // When no entry is selected,
+        //   print an overview of every desktop entry managed by mkdesktop
+        //
+        None => {
+            let desktop_files = match desktop::read_desktop_files() {
+                Ok(x) => x,
+                Err(e) => {
+                    println!("Failed to read desktop files: {}", e);
+                    process::exit(20);
+                }
+            };
 
-    for entry in desktop_files {
-        println!("{}", entry.display());
+            let mut i = 0;
+            for entry in desktop_files {
+                println!("({}) {}", i, entry.display());
+                i += 1;
+            }
+        }
+    }
+}
+
+
+pub fn remove(arg_matches: clap::ArgMatches) {
+    let selector = arg_matches.value_of("rm").unwrap();
+    let entry = get_entry_or_error_out(selector);
+
+    match entry.delete() {
+        Ok(()) => {}
+        Err(error) => {
+            println!("Failed to delete entry \"{}\" - {:?}", entry.get_name(), error);
+            process::exit(12);
+        }
     }
 }
 
@@ -101,6 +143,17 @@ fn pwd() -> Option<String> {
     match env::var_os("PWD") {
         Some(value) => Some(String::from(value.to_str().unwrap_or_default())),
         None => None
+    }
+}
+
+
+fn get_entry_or_error_out(selector: &str) -> DesktopEntry {
+    match desktop::select(selector) {
+        Ok(e) => e,
+        Err(error) => {
+            println!("Failed to select entry \"{}\" - {:?}", selector, error);
+            process::exit(11);
+        }
     }
 }
 

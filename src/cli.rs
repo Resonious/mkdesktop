@@ -2,37 +2,59 @@ extern crate clap;
 
 use std::io;
 use std::env;
-use std::fs::File;
 use std::process;
+use std::error::Error;
 
 use path_abs::PathAbs;
 
 use super::desktop::{self, DesktopEntry};
 
-pub fn begin(arg_matches: clap::ArgMatches) {
-    let yes = arg_matches.is_present("yes");
 
-    let filename = match arg_matches.value_of("FILE") {
-        Some(f) => f,
-        None => {
-            println!("Please specify FILE (or pass --help)");
-            process::exit(5);
+macro_rules! optional_entry_field {
+    ( $entry:expr, $getter:ident ) => {
+        match &$entry {
+            Some(entry) => Some(entry.$getter().to_string()),
+            None        => None
         }
     };
-
-    let exec_path = match PathAbs::new(filename).expect("Couldn't get file path").absolute() {
-        Ok(f) => f,
-        Err(e) => {
-            println!("Failed to open {} - {}", filename, e);
-            process::exit(1);
+    ( $entry:expr, $getter:ident, $default:expr ) => {
+        match &$entry {
+            Some(entry) => Some(entry.$getter().to_string()),
+            None        => $default
         }
+    };
+}
+
+
+pub fn create_or_update(entry_result: Option<io::Result<DesktopEntry>>, arg_matches: clap::ArgMatches) {
+    let yes   = arg_matches.is_present("yes");
+
+    let (filename, entry) = match entry_result {
+        Some(result) => match result {
+            // An entry was successfully selected -- we want to update that entry
+            Ok(e)  => (e.get_exec().to_string(), Some(e.clone())),
+
+            // An entry couldn't be parsed from what was given -- it must be a filename for a new entry
+            Err(_) => match arg_matches.value_of("FILE_OR_ENTRY") {
+                Some(f) => (f.to_string(), None),
+                None    => error_out("Please specify a file or an entry (see --help)")
+            }
+        }
+
+        // No file parameter was specified
+        None => error_out("Please specify a file or an entry (see --help)")
+    };
+
+    let exec_path = match PathAbs::new(&filename).expect("Couldn't get file path").absolute() {
+        Ok(f)  => f,
+        Err(e) => error_out(&format!("Failed to open {} - {}", &filename, e))
     };
 
     let exec = String::from(exec_path.as_path().to_str().expect("Failed to turn exec path into string"));
 
     let name = match arg_matches.value_of("name") {
         Some(arg) => String::from(arg),
-        None      => ask_stdin_for_str("Please enter a name for the desktop entry (required)", None, yes)
+        None      => ask_stdin_for_str("Please enter a name for the desktop entry (required)", optional_entry_field!(entry, get_name), yes)
     };
     if name.is_empty() {
         println!("A name is required");
@@ -41,63 +63,69 @@ pub fn begin(arg_matches: clap::ArgMatches) {
 
     let comment = match arg_matches.value_of("comment") {
         Some(arg) => String::from(arg),
-        None      => ask_stdin_for_str("Please enter a tooltip for the desktop entry", None, yes),
+        None      => ask_stdin_for_str("Please enter a tooltip for the desktop entry", optional_entry_field!(entry, get_comment), yes),
     };
 
     let categories = match arg_matches.value_of("categories") {
         Some(arg) => String::from(arg),
-        None      => ask_stdin_for_str("Please enter semicolon-separated categories", None, yes),
+        None      => ask_stdin_for_str("Please enter semicolon-separated categories", optional_entry_field!(entry, get_categories), yes),
     };
 
     let path = match arg_matches.value_of("path") {
         Some(arg) => String::from(arg),
-        None      => ask_stdin_for_str("Please enter the working directory for the binary", pwd(), yes),
+        None      => ask_stdin_for_str("Please enter the working directory for the binary", optional_entry_field!(entry, get_path, pwd()), yes),
     };
 
     let icon = match arg_matches.value_of("icon") {
         Some(arg) => match PathAbs::new(arg).expect("Couldn't get icon path").absolute() {
             Ok(f)  => String::from(f.as_path().to_str().expect("Failed to turn icon path into string")),
-            Err(e) => {
-                println!("Failed to open {} - {}", arg, e);
-                process::exit(2);
-            }
+            Err(e) => error_out(&format!("Failed to open {} - {}", arg, e))
         }
-        None      => ask_stdin_for_str("Please enter the path to an icon", None, yes),
+        None => ask_stdin_for_str("Please enter the path to an icon", optional_entry_field!(entry, get_icon), yes),
     };
 
-
-    // Write desktop file
-    // TODO if --entry= is present, maybe we should be sure to delete it
-
-    let mut file = File::create(desktop::name_to_desktop_file_path(&name)).expect("Failed to create desktop file");
-
-    desktop::make_desktop(
+    // Prepare new entry
+    let new_entry = DesktopEntry::new(
         &name,
         &comment,
         &path,
         &exec,
         &icon,
-        false,
         &categories,
-        &mut file
-    ).expect("Couldn't write the damn thing!!! WHY!!!");
+    );
+
+    // Write to disk
+    match new_entry.write_to_apps_dir() {
+        Ok(()) => {}
+        Err(error) => error_out(error.description())
+    }
+
+    // Delete old entry file if name was changed
+    match entry {
+        Some(old_entry) => if old_entry.filename() != new_entry.filename() {
+            match old_entry.delete() {
+                Ok(()) => {}
+                Err(error) => error_out(&format!("Failed to delete old entry ({}) you probably have a duplicate now", error.description()))
+            }
+        },
+        None => {}
+    }
 }
 
 
-pub fn status(arg_matches: clap::ArgMatches) {
-    match arg_matches.value_of("entry") {
+pub fn status(entry_result: Option<io::Result<DesktopEntry>>) {
+    match valid_entry_or_none(entry_result) {
         //
         // When an entry is selected,
         //   print the whole desktop file to STDOUT
         //
-        Some(selector) => {
-            let entry = get_entry_or_error_out(selector);
+        Some(entry) => {
             let mut stdout = io::stdout();
             println!("# {:?}", entry.filepath());
             match entry.write(&mut stdout) {
                 Ok(()) => {}
                 Err(error) => {
-                    println!("Failed to print entry to stdout: {:?}", error);
+                    println!("Failed to print entry to stdout: {}", error.description());
                     process::exit(21);
                 }
             }
@@ -125,16 +153,16 @@ pub fn status(arg_matches: clap::ArgMatches) {
 }
 
 
-pub fn remove(arg_matches: clap::ArgMatches) {
-    let selector = arg_matches.value_of("rm").unwrap();
-    let entry = get_entry_or_error_out(selector);
-
-    match entry.delete() {
-        Ok(()) => {}
-        Err(error) => {
-            println!("Failed to delete entry \"{}\" - {:?}", entry.get_name(), error);
-            process::exit(12);
+pub fn remove(entry_result: Option<io::Result<DesktopEntry>>) {
+    match valid_entry_or_none(entry_result) {
+        Some(entry) => match entry.delete() {
+            Ok(()) => {}
+            Err(error) => {
+                println!("Failed to delete entry \"{}\" - {}", entry.get_name(), error.description());
+                process::exit(12);
+            }
         }
+        None => error_out("Please specify an entry, either by index or by name")
     }
 }
 
@@ -147,14 +175,20 @@ fn pwd() -> Option<String> {
 }
 
 
-fn get_entry_or_error_out(selector: &str) -> DesktopEntry {
-    match desktop::select(selector) {
-        Ok(e) => e,
-        Err(error) => {
-            println!("Failed to select entry \"{}\" - {:?}", selector, error);
-            process::exit(11);
+fn valid_entry_or_none(entry: Option<io::Result<DesktopEntry>>) -> Option<DesktopEntry> {
+    match entry {
+        Some(result) => match result {
+            Ok(entry) => Some(entry),
+            Err(error) => error_out(error.description())
         }
+        None => None
     }
+}
+
+
+fn error_out(error: &str) -> ! {
+    println!("{}", error);
+    process::exit(11);
 }
 
 
@@ -165,7 +199,7 @@ fn ask_stdin_for_str(msg: &str, default: Option<String>, skip: bool) -> String {
     };
     if skip { return default_val }
 
-    if !default_val.is_empty() { println!("{} (default={})", msg, default_val); }
+    if !default_val.is_empty() { println!("{} (blank='{}')", msg, default_val); }
     else                       { println!("{}", msg); }
 
     let mut user_input = String::new();

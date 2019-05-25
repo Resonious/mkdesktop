@@ -53,8 +53,30 @@ impl DesktopEntry {
     pub fn get_categories(&self) -> &str { return &self.categories; }
 
 
+    /// Creates a new entry with the given fields
+    pub fn new(
+        name: &str,
+        comment: &str,
+        path: &str,
+        exec: &str,
+        icon: &str,
+        categories: &str,
+    ) -> DesktopEntry {
+        DesktopEntry {
+            name: name.to_string(),
+            shortcut_type: String::from("Application"),
+            comment: comment.to_string(),
+            path: path.to_string(),
+            exec: exec.to_string(),
+            icon: icon.to_string(),
+            terminal: false,
+            categories: categories.to_string(),
+        }
+    }
+
+
     /// Parses DesktopEntry from input stream
-    pub fn new(input: &mut io::BufRead) -> DesktopEntry {
+    pub fn read(input: &mut io::BufRead) -> DesktopEntry {
         lazy_static! {
             static ref CATEGORY_REGEX: Regex = RegexBuilder::new(r"^\[([^\]]+)\]")
                 .build().unwrap();
@@ -254,7 +276,7 @@ pub fn read_desktop_files() -> io::Result<Vec<DesktopEntry>> {
         };
         let mut reader = io::BufReader::new(file);
 
-        result.push(DesktopEntry::new(&mut reader));
+        result.push(DesktopEntry::read(&mut reader));
     }
 
     Ok(result)
@@ -346,7 +368,7 @@ Terminal=false
 # Describes the categories in which this entry should be shown
 Categories=Education;Languages;Java;";
         let mut stream = io::Cursor::new(desktop_string);
-        let desktop_entry = DesktopEntry::new(&mut stream);
+        let desktop_entry = DesktopEntry::read(&mut stream);
 
         assert_eq!(desktop_entry.shortcut_type, "Application");
         assert_eq!(desktop_entry.comment, "Flash card based learning tool");

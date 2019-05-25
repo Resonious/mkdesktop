@@ -115,7 +115,7 @@ pub fn editor(entry: Option<io::Result<DesktopEntry>>) {
                 let dialog = error_dialog(error_message.description());
                 dialog.show_all();
                 dialog.run();
-                return;
+                process::exit(30);
             }
         }
         None => {}

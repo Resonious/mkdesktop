@@ -360,8 +360,7 @@ pub fn make_desktop(
 
     output.write_fmt(format_args!("\n[Desktop Action delete-shortcut]\n"))?;
     output.write_fmt(format_args!("Name=Delete Shortcut\n"))?;
-    // TODO this won't work anymore because of the 'xdg-desktop-menu install' thing
-    output.write_fmt(format_args!("Exec=rm {:?}\n", name_to_desktop_file_path(name)))?;
+    output.write_fmt(format_args!("Exec={} --rm \"{}\"\n", env!("CARGO_PKG_NAME"), name))?;
 
     // Done -- flush output
     output.flush()?;

@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Generated with glade 3.22.1 -->
+<interface>
+  <requires lib="gtk+" version="3.20"/>
+  <object class="GtkTextBuffer" id="exec_buffer">
+    <property name="text" translatable="yes">unspecified</property>
+  </object>
+  <object class="GtkTextBuffer" id="path_buffer">
+    <property name="text" translatable="yes">/home/unspecified</property>
+  </object>
+  <object class="GtkBox" id="entry">
+    <property name="visible">True</property>
+    <property name="can_focus">False</property>
+    <property name="spacing">8</property>
+    <child>
+      <object class="GtkBox" id="icon_box">
+        <property name="visible">True</property>
+        <property name="can_focus">False</property>
+        <property name="orientation">vertical</property>
+        <child>
+          <object class="GtkImage" id="icon_image">
+            <property name="visible">True</property>
+            <property name="can_focus">False</property>
+            <property name="pixel_size">128</property>
+            <property name="icon_name">application-x-executable</property>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">True</property>
+            <property name="position">0</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkLabel" id="name-label">
+            <property name="visible">True</property>
+            <property name="can_focus">False</property>
+            <property name="label" translatable="yes">SHORTCUT NAME</property>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">True</property>
+            <property name="position">1</property>
+          </packing>
+        </child>
+      </object>
+      <packing>
+        <property name="expand">False</property>
+        <property name="fill">True</property>
+        <property name="position">0</property>
+      </packing>
+    </child>
+    <child>
+      <object class="GtkGrid" id="attributes_grid">
+        <property name="visible">True</property>
+        <property name="can_focus">False</property>
+        <property name="row_spacing">3</property>
+        <property name="column_spacing">8</property>
+        <property name="row_homogeneous">True</property>
+        <child>
+          <object class="GtkLabel" id="command_label">
+            <property name="visible">True</property>
+            <property name="can_focus">False</property>
+            <property name="halign">end</property>
+            <property name="label" translatable="yes">Command:</property>
+            <property name="justify">right</property>
+          </object>
+          <packing>
+            <property name="left_attach">0</property>
+            <property name="top_attach">0</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkLabel" id="comment_label">
+            <property name="visible">True</property>
+            <property name="can_focus">False</property>
+            <property name="halign">end</property>
+            <property name="label" translatable="yes">Tooltip:</property>
+            <property name="justify">right</property>
+          </object>
+          <packing>
+            <property name="left_attach">0</property>
+            <property name="top_attach">1</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkLabel" id="path_label">
+            <property name="visible">True</property>
+            <property name="can_focus">False</property>
+            <property name="halign">end</property>
+            <property name="label" translatable="yes">Working Directory:</property>
+            <property name="justify">right</property>
+          </object>
+          <packing>
+            <property name="left_attach">0</property>
+            <property name="top_attach">2</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkLabel" id="categories_label">
+            <property name="visible">True</property>
+            <property name="can_focus">False</property>
+            <property name="halign">end</property>
+            <property name="label" translatable="yes">Categories:</property>
+            <property name="justify">right</property>
+          </object>
+          <packing>
+            <property name="left_attach">0</property>
+            <property name="top_attach">3</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkLabel" id="comment_value">
+            <property name="visible">True</property>
+            <property name="can_focus">False</property>
+            <property name="halign">start</property>
+            <property name="valign">center</property>
+            <property name="label" translatable="yes">label</property>
+          </object>
+          <packing>
+            <property name="left_attach">1</property>
+            <property name="top_attach">1</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkLabel" id="categories_value">
+            <property name="visible">True</property>
+            <property name="can_focus">False</property>
+            <property name="halign">start</property>
+            <property name="valign">center</property>
+            <property name="label" translatable="yes">label</property>
+          </object>
+          <packing>
+            <property name="left_attach">1</property>
+            <property name="top_attach">3</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkTextView" id="exec_value">
+            <property name="visible">True</property>
+            <property name="can_focus">True</property>
+            <property name="halign">start</property>
+            <property name="valign">center</property>
+            <property name="editable">False</property>
+            <property name="cursor_visible">False</property>
+            <property name="buffer">exec_buffer</property>
+            <property name="monospace">True</property>
+          </object>
+          <packing>
+            <property name="left_attach">1</property>
+            <property name="top_attach">0</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkTextView" id="path_value">
+            <property name="visible">True</property>
+            <property name="can_focus">True</property>
+            <property name="halign">start</property>
+            <property name="valign">center</property>
+            <property name="editable">False</property>
+            <property name="cursor_visible">False</property>
+            <property name="buffer">path_buffer</property>
+            <property name="monospace">True</property>
+          </object>
+          <packing>
+            <property name="left_attach">1</property>
+            <property name="top_attach">2</property>
+          </packing>
+        </child>
+      </object>
+      <packing>
+        <property name="expand">False</property>
+        <property name="fill">True</property>
+        <property name="position">1</property>
+      </packing>
+    </child>
+  </object>
+</interface>

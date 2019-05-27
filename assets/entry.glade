@@ -2,12 +2,6 @@
 <!-- Generated with glade 3.22.1 -->
 <interface>
   <requires lib="gtk+" version="3.20"/>
-  <object class="GtkTextBuffer" id="exec_buffer">
-    <property name="text" translatable="yes">unspecified</property>
-  </object>
-  <object class="GtkTextBuffer" id="path_buffer">
-    <property name="text" translatable="yes">/home/unspecified</property>
-  </object>
   <object class="GtkBox" id="entry">
     <property name="visible">True</property>
     <property name="can_focus">False</property>
@@ -145,15 +139,15 @@
           </packing>
         </child>
         <child>
-          <object class="GtkTextView" id="exec_value">
+          <object class="GtkLabel" id="exec_value">
             <property name="visible">True</property>
-            <property name="can_focus">True</property>
+            <property name="can_focus">False</property>
             <property name="halign">start</property>
             <property name="valign">center</property>
-            <property name="editable">False</property>
-            <property name="cursor_visible">False</property>
-            <property name="buffer">exec_buffer</property>
-            <property name="monospace">True</property>
+            <property name="label" translatable="yes">exec</property>
+            <style>
+              <class name="monospace"/>
+            </style>
           </object>
           <packing>
             <property name="left_attach">1</property>
@@ -161,15 +155,15 @@
           </packing>
         </child>
         <child>
-          <object class="GtkTextView" id="path_value">
+          <object class="GtkLabel" id="path_value">
             <property name="visible">True</property>
-            <property name="can_focus">True</property>
+            <property name="can_focus">False</property>
             <property name="halign">start</property>
             <property name="valign">center</property>
-            <property name="editable">False</property>
-            <property name="cursor_visible">False</property>
-            <property name="buffer">path_buffer</property>
-            <property name="monospace">True</property>
+            <property name="label" translatable="yes">path</property>
+            <style>
+              <class name="monospace"/>
+            </style>
           </object>
           <packing>
             <property name="left_attach">1</property>

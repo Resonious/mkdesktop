@@ -5,7 +5,7 @@ extern crate gio;
 extern crate inotify;
 
 use gtk::prelude::*;
-use gtk::{Window, Dialog, HeaderBar, FileChooserButton, Image, Label, Button, Continue};
+use gtk::{ApplicationWindow, Window, Dialog, HeaderBar, FileChooserButton, Image, Label, Button, Continue};
 use gdk_pixbuf::Pixbuf;
 use glib::GString;
 use glib::MainContext;
@@ -83,7 +83,6 @@ fn setup_list_ui(entries_result: io::Result<Vec<DesktopEntry>>, entries_containe
     //
     /////////////////////////////////////////////////////////
 
-    // TODO factor this out into a method that's also called on filesystem changes
     for entry in entries {
         let builder = gtk::Builder::new_from_string(ENTRY_GLADE);
 
@@ -92,9 +91,8 @@ fn setup_list_ui(entries_result: io::Result<Vec<DesktopEntry>>, entries_containe
         let categories_label: Label = builder.get_object("categories_value").unwrap();
         let comment_label:    Label = builder.get_object("comment_value").unwrap();
         let name_label:       Label = builder.get_object("name_value").unwrap();
-
-        let exec_buffer: gtk::TextBuffer = builder.get_object("exec_buffer").unwrap();
-        let path_buffer: gtk::TextBuffer = builder.get_object("path_buffer").unwrap();
+        let exec_label:       Label = builder.get_object("exec_value").unwrap();
+        let path_label:       Label = builder.get_object("path_value").unwrap();
 
         let icon: Image = builder.get_object("icon_image").unwrap();
 
@@ -105,9 +103,8 @@ fn setup_list_ui(entries_result: io::Result<Vec<DesktopEntry>>, entries_containe
         categories_label.set_text(entry.get_categories());
         comment_label.set_text(entry.get_comment());
         name_label.set_text(entry.get_name());
-
-        exec_buffer.set_text(entry.get_exec());
-        path_buffer.set_text(entry.get_path());
+        exec_label.set_text(entry.get_exec());
+        path_label.set_text(entry.get_path());
 
         set_icon_preview(&icon, entry.get_icon(), ICON_PREVIEW_SIZE);
 
@@ -151,7 +148,7 @@ pub fn index(entries_result: io::Result<Vec<DesktopEntry>>)  {
     /////////////////////////////////////////////////////////
     let builder = gtk::Builder::new_from_string(LIST_ENTRIES_GLADE);
 
-    let window:  Window = builder.get_object("window").unwrap();
+    let window:  ApplicationWindow = builder.get_object("window").unwrap();
     let entries_container: gtk::Container = builder.get_object("entries_container").unwrap();
     let new_entry: Button = builder.get_object("new_entry_button").unwrap();
 

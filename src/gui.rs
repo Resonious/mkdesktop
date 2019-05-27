@@ -1,18 +1,24 @@
 extern crate gtk;
 extern crate gdk_pixbuf;
 extern crate glib;
+extern crate gio;
+extern crate inotify;
 
 use gtk::prelude::*;
-use gtk::{Window, Dialog, HeaderBar, FileChooserButton, Image, Label, Button};
+use gtk::{Window, Dialog, HeaderBar, FileChooserButton, Image, Label, Button, Continue};
 use gdk_pixbuf::Pixbuf;
 use glib::GString;
+use glib::MainContext;
+
+use inotify::{EventMask, WatchMask, Inotify};
 
 use std::io;
 use std::process;
 use std::path::Path;
 use std::error::Error;
+use std::thread;
 
-use super::desktop::DesktopEntry;
+use super::desktop::{DesktopEntry, data_dir, read_desktop_files};
 
 include!(concat!(env!("OUT_DIR"), "/new-entry.glade.rs"));
 include!(concat!(env!("OUT_DIR"), "/error-dialog.glade.rs"));
@@ -55,9 +61,7 @@ fn error_dialog(message: &str) -> Dialog {
 }
 
 
-pub fn index(entries_result: io::Result<Vec<DesktopEntry>>)  {
-    init();
-
+fn setup_list_ui(entries_result: io::Result<Vec<DesktopEntry>>, entries_container: &gtk::Container) {
     /////////////////////////////////////////////////////////
     //
     //                   ERROR CHECKING
@@ -71,18 +75,6 @@ pub fn index(entries_result: io::Result<Vec<DesktopEntry>>)  {
         }
         Err(error) => error_out(error.description())
     };
-
-
-    /////////////////////////////////////////////////////////
-    //
-    //           CREATE/EXTRACT WIDGETS OF INTEREST
-    //
-    /////////////////////////////////////////////////////////
-    let builder = gtk::Builder::new_from_string(LIST_ENTRIES_GLADE);
-
-    let window:  Window = builder.get_object("window").unwrap();
-    let entries_container: gtk::Container = builder.get_object("entries_container").unwrap();
-    let new_entry: Button = builder.get_object("new_entry_button").unwrap();
 
 
     /////////////////////////////////////////////////////////
@@ -145,24 +137,77 @@ pub fn index(entries_result: io::Result<Vec<DesktopEntry>>)  {
 
         entries_container.add(&entry_widget);
     }
+}
+
+
+pub fn index(entries_result: io::Result<Vec<DesktopEntry>>)  {
+    init();
 
 
     /////////////////////////////////////////////////////////
     //
-    //                    HEADER BAR
+    //           CREATE/EXTRACT WIDGETS OF INTEREST
+    //
+    /////////////////////////////////////////////////////////
+    let builder = gtk::Builder::new_from_string(LIST_ENTRIES_GLADE);
+
+    let window:  Window = builder.get_object("window").unwrap();
+    let entries_container: gtk::Container = builder.get_object("entries_container").unwrap();
+    let new_entry: Button = builder.get_object("new_entry_button").unwrap();
+
+    new_entry.connect_clicked(|_| {
+        editor(None);
+    });
+
+    setup_list_ui(entries_result, &entries_container);
+
+    /////////////////////////////////////////////////////////
+    //
+    //              REFRESH ON FILE CHANGES
     //
     /////////////////////////////////////////////////////////
 
-    //let header_bar = HeaderBar::new();
-    //header_bar.set_show_close_button(true);
-    //header_bar.set_title("Desktop Launcher Manager");
-    //header_bar.set_has_subtitle(false);
+    let (tx, rx) = MainContext::channel(glib::PRIORITY_DEFAULT);
 
-    //// TODO get the headerbar set up
-    ////header_bar.pack_start(&cancel_button);
-    ////header_bar.pack_end(&create_button);
+    thread::spawn(move || {
+        let mut inotify = Inotify::init().expect("Failed to initialize inotify");
+        let dir_to_watch = data_dir();
 
-    //window.set_titlebar(Some(&header_bar));
+        // If this fails, we'll just panic out of the thread and not get updates
+        // (no big deal)
+        inotify.add_watch(
+            dir_to_watch,
+            WatchMask::CREATE | WatchMask::DELETE | WatchMask::MODIFY
+        ).expect("Failed to add inotify watch");
+
+        let mut buffer = [0u8; 4096];
+        loop {
+            let events = inotify
+                .read_events_blocking(&mut buffer)
+                .expect("Failed to read inotify events");
+
+            // Refresh as long as there was an event on a file
+            let mut should_refresh = false;
+            for event in events {
+                should_refresh = should_refresh || !event.mask.contains(EventMask::ISDIR)
+            }
+
+            if should_refresh {
+                match tx.send(()) {
+                    Ok(_) => {}
+                    Err(_) => return
+                }
+            }
+        }
+    });
+
+    // Remove all children and re-read desktop files whenever there's a filesystem change
+    rx.attach(None, move |_| {
+        entries_container.foreach(|child| { child.destroy(); });
+        let new_entries = read_desktop_files();
+        setup_list_ui(new_entries, &entries_container);
+        Continue(true)
+    });
 
 
     /////////////////////////////////////////////////////////

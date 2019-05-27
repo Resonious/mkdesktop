@@ -11,6 +11,10 @@
   <object class="GtkBox" id="entry">
     <property name="visible">True</property>
     <property name="can_focus">False</property>
+    <property name="margin_left">4</property>
+    <property name="margin_right">4</property>
+    <property name="margin_top">4</property>
+    <property name="margin_bottom">4</property>
     <property name="spacing">8</property>
     <child>
       <object class="GtkBox" id="icon_box">

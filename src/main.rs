@@ -26,6 +26,7 @@ fn main() {
         (@arg yes: -y                                        "Create/update desktop entry without asking about anything")
         (@arg rm: --remove --rm                              "Remove selected entry")
         (@arg status: --status -s                            "View desktop files managed by mkdesktop")
+        (@arg new:    --new                                  "Make a new entry")
         (@arg gui:    --gui   -g                             "Start GUI")
     ).get_matches();
 
@@ -36,17 +37,37 @@ fn main() {
     // TODO move cli::create_or_update's entry creation here, and allow new entries to be constructed for any
     // command (it'll have to be marked as "new" of course)
 
-    if arg_matches.is_present("gui") {
-        gui::editor(entry);
-    }
-    else if arg_matches.is_present("rm") {
+    if arg_matches.is_present("rm") {
         cli::remove(entry);
+        return;
     }
-    else if arg_matches.is_present("status") || !arg_matches.is_present("FILE_OR_ENTRY") {
-        cli::status(entry);
+
+    if arg_matches.is_present("new") {
+        if arg_matches.is_present("gui") {
+            gui::editor(None);
+        }
+        else {
+            cli::create_or_update(None, arg_matches);
+        }
+        return;
+    }
+
+
+    if arg_matches.is_present("status") || !arg_matches.is_present("FILE_OR_ENTRY") {
+        if arg_matches.is_present("gui") {
+            gui::index(desktop::read_desktop_files());
+        }
+        else {
+            cli::status(entry);
+        }
     }
     else {
-        cli::create_or_update(entry, arg_matches);
+        if arg_matches.is_present("gui") {
+            gui::editor(entry);
+        }
+        else {
+            cli::create_or_update(entry, arg_matches);
+        }
     }
 }
 

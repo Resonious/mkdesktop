@@ -9,7 +9,7 @@ use glib::GString;
 
 use std::io;
 use std::process;
-use std::path::PathBuf;
+use std::path::Path;
 use std::error::Error;
 
 use super::desktop::DesktopEntry;
@@ -17,10 +17,13 @@ use super::desktop::DesktopEntry;
 include!(concat!(env!("OUT_DIR"), "/new-entry.glade.rs"));
 include!(concat!(env!("OUT_DIR"), "/error-dialog.glade.rs"));
 
+include!(concat!(env!("OUT_DIR"), "/list-entries.glade.rs"));
+include!(concat!(env!("OUT_DIR"), "/entry.glade.rs"));
+
 const ICON_PREVIEW_SIZE: i32 = 128;
 
 
-fn set_icon_preview(image: &Image, preview_filename: PathBuf, size: i32) {
+fn set_icon_preview<P: AsRef<Path>>(image: &Image, preview_filename: P, size: i32) {
     let pixbuf = match Pixbuf::new_from_file_at_scale(
         preview_filename,
         size, size,
@@ -52,14 +55,135 @@ fn error_dialog(message: &str) -> Dialog {
 }
 
 
-// TODO make a GUI index of entries that allows create/update/destroy
+pub fn index(entries_result: io::Result<Vec<DesktopEntry>>)  {
+    init();
+
+    /////////////////////////////////////////////////////////
+    //
+    //                   ERROR CHECKING
+    //
+    /////////////////////////////////////////////////////////
+
+    let entries = match entries_result {
+        Ok(mut e) => {
+            e.sort_unstable_by_key(|entry| entry.get_name().to_string());
+            e
+        }
+        Err(error) => error_out(error.description())
+    };
+
+
+    /////////////////////////////////////////////////////////
+    //
+    //           CREATE/EXTRACT WIDGETS OF INTEREST
+    //
+    /////////////////////////////////////////////////////////
+    let builder = gtk::Builder::new_from_string(LIST_ENTRIES_GLADE);
+
+    let window:  Window = builder.get_object("window").unwrap();
+    let entries_container: gtk::Container = builder.get_object("entries_container").unwrap();
+    let new_entry: Button = builder.get_object("new_entry_button").unwrap();
+
+
+    /////////////////////////////////////////////////////////
+    //
+    //                   POPULATE LIST
+    //
+    /////////////////////////////////////////////////////////
+
+    // TODO factor this out into a method that's also called on filesystem changes
+    for entry in entries {
+        let builder = gtk::Builder::new_from_string(ENTRY_GLADE);
+
+        let entry_widget: gtk::Widget = builder.get_object("entry").unwrap();
+
+        let categories_label: Label = builder.get_object("categories_value").unwrap();
+        let comment_label:    Label = builder.get_object("comment_value").unwrap();
+        let name_label:       Label = builder.get_object("name_value").unwrap();
+
+        let exec_buffer: gtk::TextBuffer = builder.get_object("exec_buffer").unwrap();
+        let path_buffer: gtk::TextBuffer = builder.get_object("path_buffer").unwrap();
+
+        let icon: Image = builder.get_object("icon_image").unwrap();
+
+        let launch_entry: Button = builder.get_object("launch_entry_button").unwrap();
+        let delete_entry: Button = builder.get_object("delete_entry_button").unwrap();
+        let edit_entry: Button = builder.get_object("edit_entry_button").unwrap();
+
+        categories_label.set_text(entry.get_categories());
+        comment_label.set_text(entry.get_comment());
+        name_label.set_text(entry.get_name());
+
+        exec_buffer.set_text(entry.get_exec());
+        path_buffer.set_text(entry.get_path());
+
+        set_icon_preview(&icon, entry.get_icon(), ICON_PREVIEW_SIZE);
+
+        // Launch button functionality
+        let entry_to_launch = entry.clone();
+        launch_entry.connect_clicked(move |_| {
+            // TODO
+            println!("TODO: Launch {:?}", entry_to_launch.get_name());
+        });
+
+        // Delete button functionality
+        let entry_to_delete = entry.clone();
+        delete_entry.connect_clicked(move |_| {
+            match entry_to_delete.delete() {
+                Ok(()) => {}
+                Err(error) => error_out(error.description())
+            }
+        });
+
+        // Delete button functionality
+        let entry_to_edit = entry.clone();
+        edit_entry.connect_clicked(move |_| {
+            let entry = entry_to_edit.clone();
+            editor(Some(Ok(entry)));
+            process::exit(0);
+        });
+
+        entries_container.add(&entry_widget);
+    }
+
+
+    /////////////////////////////////////////////////////////
+    //
+    //                    HEADER BAR
+    //
+    /////////////////////////////////////////////////////////
+
+    //let header_bar = HeaderBar::new();
+    //header_bar.set_show_close_button(true);
+    //header_bar.set_title("Desktop Launcher Manager");
+    //header_bar.set_has_subtitle(false);
+
+    //// TODO get the headerbar set up
+    ////header_bar.pack_start(&cancel_button);
+    ////header_bar.pack_end(&create_button);
+
+    //window.set_titlebar(Some(&header_bar));
+
+
+    /////////////////////////////////////////////////////////
+    //
+    //                    SHOW WINDOW
+    //
+    /////////////////////////////////////////////////////////
+
+    window.show_all();
+
+    window.connect_delete_event(|_, _| {
+        gtk::main_quit();
+        Inhibit(false)
+    });
+
+    gtk::main();
+}
 
 
 pub fn editor(entry: Option<io::Result<DesktopEntry>>) {
-    if gtk::init().is_err() {
-        println!("Failed to initialize GTK.");
-        process::exit(10);
-    }
+    init();
 
     let builder = gtk::Builder::new_from_string(NEW_ENTRY_GLADE);
 
@@ -262,6 +386,22 @@ pub fn editor(entry: Option<io::Result<DesktopEntry>>) {
     });
 
     gtk::main();
+}
+
+
+fn error_out(error_message: &str) -> ! {
+    let dialog = error_dialog(error_message);
+    dialog.show_all();
+    dialog.run();
+    process::exit(30);
+}
+
+
+fn init() {
+    if gtk::init().is_err() {
+        println!("Failed to initialize GTK.");
+        process::exit(10);
+    }
 }
 
 

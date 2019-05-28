@@ -367,8 +367,14 @@ pub fn editor(app: &gtk::Application, entry: Option<DesktopEntry>) {
 
     let header_bar = HeaderBar::new();
     header_bar.set_show_close_button(false);
-    header_bar.set_title("Desktop Launcher Manager");
-    header_bar.set_has_subtitle(false);
+    if old_entry_to_delete.is_some() {
+        header_bar.set_title("Editing Shortcut");
+    }
+    else {
+        header_bar.set_title("New Shortcut");
+    }
+    header_bar.set_has_subtitle(true);
+    header_bar.set_subtitle("mkdesktop");
 
     header_bar.pack_start(&cancel_button);
     header_bar.pack_end(&create_button);

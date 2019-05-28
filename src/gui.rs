@@ -15,7 +15,7 @@ use glib::MainContext;
 use inotify::{EventMask, WatchMask, Inotify};
 
 use std::io;
-use std::process;
+use std::process::{self, Command};
 use std::path::Path;
 use std::error::Error;
 use std::thread;
@@ -113,8 +113,19 @@ fn setup_list_ui(entries_result: io::Result<Vec<DesktopEntry>>, entries_containe
         // Launch button functionality
         let entry_to_launch = entry.clone();
         launch_entry.connect_clicked(move |_| {
-            // TODO
-            println!("TODO: Launch {:?}", entry_to_launch.get_name());
+            match Command::new("sh")
+                .current_dir(entry_to_launch.get_path())
+                .arg("-c")
+                .arg(entry_to_launch.get_exec())
+                .spawn() {
+                    Ok(_) => {}
+                    Err(launch_error) => {
+                        let dialog = error_dialog(launch_error.description());
+                        dialog.show_all();
+                        dialog.run();
+                    }
+                }
+            
         });
 
         // Delete button functionality

@@ -39,35 +39,18 @@ fn main() {
 
     if arg_matches.is_present("rm") {
         cli::remove(entry);
-        return;
     }
-
-    if arg_matches.is_present("new") {
-        if arg_matches.is_present("gui") {
-            gui::editor(None);
-        }
-        else {
-            cli::create_or_update(None, arg_matches);
-        }
-        return;
+    else if arg_matches.is_present("gui") {
+        gui::start(entry, arg_matches);
     }
-
-
-    if arg_matches.is_present("status") || !arg_matches.is_present("FILE_OR_ENTRY") {
-        if arg_matches.is_present("gui") {
-            gui::index(desktop::read_desktop_files());
-        }
-        else {
-            cli::status(entry);
-        }
+    else if arg_matches.is_present("new") {
+        cli::create_or_update(None, arg_matches);
+    }
+    else if arg_matches.is_present("status") || !arg_matches.is_present("FILE_OR_ENTRY") {
+        cli::status(entry);
     }
     else {
-        if arg_matches.is_present("gui") {
-            gui::editor(entry);
-        }
-        else {
-            cli::create_or_update(entry, arg_matches);
-        }
+        cli::create_or_update(entry, arg_matches);
     }
 }
 

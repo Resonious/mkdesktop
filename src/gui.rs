@@ -1,9 +1,11 @@
+extern crate clap;
 extern crate gtk;
 extern crate gdk_pixbuf;
 extern crate glib;
 extern crate gio;
 extern crate inotify;
 
+use gio::prelude::*;
 use gtk::prelude::*;
 use gtk::{ApplicationWindow, Window, Dialog, HeaderBar, FileChooserButton, Image, Label, Button, Continue};
 use gdk_pixbuf::Pixbuf;
@@ -98,7 +100,7 @@ fn setup_list_ui(entries_result: io::Result<Vec<DesktopEntry>>, entries_containe
 
         let launch_entry: Button = builder.get_object("launch_entry_button").unwrap();
         let delete_entry: Button = builder.get_object("delete_entry_button").unwrap();
-        let edit_entry: Button = builder.get_object("edit_entry_button").unwrap();
+        let edit_entry:   Button = builder.get_object("edit_entry_button").unwrap();
 
         categories_label.set_text(entry.get_categories());
         comment_label.set_text(entry.get_comment());
@@ -126,10 +128,9 @@ fn setup_list_ui(entries_result: io::Result<Vec<DesktopEntry>>, entries_containe
 
         // Delete button functionality
         let entry_to_edit = entry.clone();
-        edit_entry.connect_clicked(move |_| {
+        edit_entry.connect_clicked(move |widget| {
             let entry = entry_to_edit.clone();
-            editor(Some(Ok(entry)));
-            process::exit(0);
+            editor(&app_of(widget), Some(entry));
         });
 
         entries_container.add(&entry_widget);
@@ -137,10 +138,40 @@ fn setup_list_ui(entries_result: io::Result<Vec<DesktopEntry>>, entries_containe
 }
 
 
-pub fn index(entries_result: io::Result<Vec<DesktopEntry>>)  {
+pub fn start(entry: Option<io::Result<DesktopEntry>>, arg_matches: clap::ArgMatches) {
     init();
 
+    let app = gtk::Application::new("me.nigelbaillie.mkdesktop", Default::default())
+        .expect("Failed to create GTK Application");
 
+    if arg_matches.is_present("new") {
+        app.connect_activate(|app| editor(app, None));
+    }
+    else if arg_matches.is_present("status") || !arg_matches.is_present("FILE_OR_ENTRY") {
+        app.connect_activate(|app| index(app, read_desktop_files()));
+    }
+    else {
+        match entry {
+            Some(result) => match result {
+                Ok(e) => {
+                    app.connect_activate(move |app| editor(app, Some(e.clone())));
+                }
+                Err(error_message) => {
+                    let dialog = error_dialog(error_message.description());
+                    dialog.show_all();
+                    dialog.run();
+                    process::exit(30);
+                }
+            },
+            None => { app.connect_activate(|app| index(app, read_desktop_files())); }
+        }
+    }
+
+    app.run(Default::default());
+}
+
+
+pub fn index(app: &gtk::Application, entries_result: io::Result<Vec<DesktopEntry>>)  {
     /////////////////////////////////////////////////////////
     //
     //           CREATE/EXTRACT WIDGETS OF INTEREST
@@ -152,8 +183,10 @@ pub fn index(entries_result: io::Result<Vec<DesktopEntry>>)  {
     let entries_container: gtk::Container = builder.get_object("entries_container").unwrap();
     let new_entry: Button = builder.get_object("new_entry_button").unwrap();
 
-    new_entry.connect_clicked(|_| {
-        editor(None);
+    window.set_application(app);
+
+    new_entry.connect_clicked(|w| {
+        editor(&app_of(w), None);
     });
 
     setup_list_ui(entries_result, &entries_container);
@@ -214,19 +247,10 @@ pub fn index(entries_result: io::Result<Vec<DesktopEntry>>)  {
     /////////////////////////////////////////////////////////
 
     window.show_all();
-
-    window.connect_delete_event(|_, _| {
-        gtk::main_quit();
-        Inhibit(false)
-    });
-
-    gtk::main();
 }
 
 
-pub fn editor(entry: Option<io::Result<DesktopEntry>>) {
-    init();
-
+pub fn editor(app: &gtk::Application, entry: Option<DesktopEntry>) {
     let builder = gtk::Builder::new_from_string(NEW_ENTRY_GLADE);
 
 
@@ -254,6 +278,8 @@ pub fn editor(entry: Option<io::Result<DesktopEntry>>) {
     let create_button: Button = builder.get_object("create_button").unwrap();
     let cancel_button: Button = builder.get_object("cancel_button").unwrap();
 
+    window.set_application(app);
+
 
     /////////////////////////////////////////////////////////
     //
@@ -264,24 +290,18 @@ pub fn editor(entry: Option<io::Result<DesktopEntry>>) {
     let mut old_entry_to_delete = None;
 
     match entry {
-        Some(result) => match result {
-            Ok(entry) => {
-                name_entry.set_text(entry.get_name());
-                preview_text.set_text(entry.get_name());
-                path_entry.set_filename(entry.get_path());
-                exec_entry.set_text(entry.get_exec());
-                icon_entry.set_filename(entry.get_icon());
-                comment_entry.set_text(entry.get_comment());
-                categories_entry.set_text(entry.get_categories());
+        Some(entry) => {
+            name_entry.set_text(entry.get_name());
+            preview_text.set_text(entry.get_name());
+            path_entry.set_filename(entry.get_path());
+            exec_entry.set_text(entry.get_exec());
+            icon_entry.set_filename(entry.get_icon());
+            comment_entry.set_text(entry.get_comment());
+            categories_entry.set_text(entry.get_categories());
 
-                old_entry_to_delete = Some(entry);
-            }
-            Err(error_message) => {
-                let dialog = error_dialog(error_message.description());
-                dialog.show_all();
-                dialog.run();
-                process::exit(30);
-            }
+            old_entry_to_delete = Some(entry);
+
+            create_button.set_label("Save");
         }
         None => {}
     }
@@ -330,13 +350,30 @@ pub fn editor(entry: Option<io::Result<DesktopEntry>>) {
 
     /////////////////////////////////////////////////////////
     //
+    //                    HEADER BAR
+    //
+    /////////////////////////////////////////////////////////
+
+    let header_bar = HeaderBar::new();
+    header_bar.set_show_close_button(false);
+    header_bar.set_title("Desktop Launcher Manager");
+    header_bar.set_has_subtitle(false);
+
+    header_bar.pack_start(&cancel_button);
+    header_bar.pack_end(&create_button);
+
+    window.set_titlebar(Some(&header_bar));
+
+
+    /////////////////////////////////////////////////////////
+    //
     //                   BUTTON EVENTS
     //
     /////////////////////////////////////////////////////////
 
     cancel_button.connect_clicked(close_window);
 
-    create_button.connect_clicked(move |_| {
+    create_button.connect_clicked(move |button| {
         // TODO actual validation of input
 
         let name = name_entry.get_text().expect("Please have name");
@@ -393,25 +430,8 @@ pub fn editor(entry: Option<io::Result<DesktopEntry>>) {
             None => {}
         }
 
-        // TODO we want to actually show that it succeeded or something.
+        window_of(button).close();
     });
-
-
-    /////////////////////////////////////////////////////////
-    //
-    //                    HEADER BAR
-    //
-    /////////////////////////////////////////////////////////
-
-    let header_bar = HeaderBar::new();
-    header_bar.set_show_close_button(false);
-    header_bar.set_title("Desktop Launcher Manager");
-    header_bar.set_has_subtitle(false);
-
-    header_bar.pack_start(&cancel_button);
-    header_bar.pack_end(&create_button);
-
-    window.set_titlebar(Some(&header_bar));
 
 
     /////////////////////////////////////////////////////////
@@ -421,13 +441,6 @@ pub fn editor(entry: Option<io::Result<DesktopEntry>>) {
     /////////////////////////////////////////////////////////
 
     window.show_all();
-
-    window.connect_delete_event(|_, _| {
-        gtk::main_quit();
-        Inhibit(false)
-    });
-
-    gtk::main();
 }
 
 
@@ -444,6 +457,18 @@ fn init() {
         println!("Failed to initialize GTK.");
         process::exit(10);
     }
+}
+
+
+fn app_of<W: IsA<gtk::Widget>>(widget: &W) -> gtk::Application {
+    let toplevel = widget.get_toplevel().expect("Tried to get window of toplevel-less widget");
+    let appwindow = toplevel.dynamic_cast::<ApplicationWindow>().expect("Widget's toplevel was not an ApplicationWindow");
+    appwindow.get_application().expect("ApplicationWindow did not have an Application")
+}
+
+fn window_of<W: IsA<gtk::Widget>>(widget: &W) -> gtk::ApplicationWindow {
+    let toplevel = widget.get_toplevel().expect("Tried to get window of toplevel-less widget");
+    toplevel.dynamic_cast::<ApplicationWindow>().expect("Widget's toplevel was not an ApplicationWindow")
 }
 
 

@@ -19,6 +19,8 @@ use std::process::{self, Command};
 use std::path::Path;
 use std::error::Error;
 use std::thread;
+use std::rc::Rc;
+use std::cell::Cell;
 
 use super::desktop::{DesktopEntry, data_dir, read_desktop_files};
 
@@ -63,7 +65,12 @@ fn error_dialog(message: &str) -> Dialog {
 }
 
 
-fn setup_list_ui(entries_result: io::Result<Vec<DesktopEntry>>, entries_container: &gtk::Container) {
+fn setup_list_ui(
+    entries_result: io::Result<Vec<DesktopEntry>>,
+    entries_container: &gtk::Container,
+    deleted_entry: Rc<Cell<Option<DesktopEntry>>>,
+    undo_control: &gtk::Button
+) {
     /////////////////////////////////////////////////////////
     //
     //                   ERROR CHECKING
@@ -102,6 +109,8 @@ fn setup_list_ui(entries_result: io::Result<Vec<DesktopEntry>>, entries_containe
         let delete_entry: Button = builder.get_object("delete_entry_button").unwrap();
         let edit_entry:   Button = builder.get_object("edit_entry_button").unwrap();
 
+        let undo: gtk::Button = undo_control.clone();
+
         categories_label.set_text(entry.get_categories());
         comment_label.set_text(entry.get_comment());
         name_label.set_text(entry.get_name());
@@ -130,14 +139,24 @@ fn setup_list_ui(entries_result: io::Result<Vec<DesktopEntry>>, entries_containe
 
         // Delete button functionality
         let entry_to_delete = entry.clone();
+        let saved_entry = deleted_entry.clone();
         delete_entry.connect_clicked(move |_| {
             match entry_to_delete.delete() {
                 Ok(()) => {}
-                Err(error) => error_out(error.description())
+                Err(error) => {
+                    let dialog = error_dialog(error.description());
+                    dialog.show_all();
+                    dialog.run();
+                    return;
+                }
             }
+
+            saved_entry.set(Some(entry_to_delete.clone()));
+
+            undo.set_visible(true);
         });
 
-        // Delete button functionality
+        // Edit button functionality
         let entry_to_edit = entry.clone();
         edit_entry.connect_clicked(move |widget| {
             let entry = entry_to_edit.clone();
@@ -193,6 +212,9 @@ pub fn index(app: &gtk::Application, entries_result: io::Result<Vec<DesktopEntry
     let window:  ApplicationWindow = builder.get_object("window").unwrap();
     let entries_container: gtk::Container = builder.get_object("entries_container").unwrap();
     let new_entry: Button = builder.get_object("new_entry_button").unwrap();
+    let undo: Button = builder.get_object("undo_button").unwrap();
+
+    let deleted_entry: Rc<Cell<Option<DesktopEntry>>> = Rc::new(Cell::new(None));
 
     window.set_application(app);
 
@@ -200,7 +222,19 @@ pub fn index(app: &gtk::Application, entries_result: io::Result<Vec<DesktopEntry
         editor(&app_of(w), None);
     });
 
-    setup_list_ui(entries_result, &entries_container);
+    let deleted_entry_to_restore = deleted_entry.clone();
+    undo.connect_clicked(move |button| {
+        let entry = deleted_entry_to_restore.clone();
+
+        match entry.take() {
+            Some(entry) => entry.write_to_apps_dir().unwrap(),
+            None        => error_out("BUG: Undo button was present when it shouldn't have been.")
+        }
+
+        button.set_visible(false);
+    });
+
+    setup_list_ui(entries_result, &entries_container, deleted_entry.clone(), &undo);
 
     /////////////////////////////////////////////////////////
     //
@@ -246,7 +280,7 @@ pub fn index(app: &gtk::Application, entries_result: io::Result<Vec<DesktopEntry
     rx.attach(None, move |_| {
         entries_container.foreach(|child| { child.destroy(); });
         let new_entries = read_desktop_files();
-        setup_list_ui(new_entries, &entries_container);
+        setup_list_ui(new_entries, &entries_container, deleted_entry.clone(), &undo.clone());
         Continue(true)
     });
 

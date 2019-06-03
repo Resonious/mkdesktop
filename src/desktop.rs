@@ -171,6 +171,8 @@ impl DesktopEntry {
     }
 
 
+    /// Makes sure the DesktopEntry is registered as a shortcut.
+    /// This is called by write_to_apps_dir and is probably useless to call directly.
     pub fn save(&self) -> io::Result<()> {
         let filepath = self.filepath();
         let path = match filepath.to_str() {
@@ -185,6 +187,7 @@ impl DesktopEntry {
     }
 
 
+    /// Writes the DesktopEntry to disk and registers it.
     pub fn write_to_apps_dir(&self) -> io::Result<()> {
         let mut path = data_dir();
         path.push(self.filename());

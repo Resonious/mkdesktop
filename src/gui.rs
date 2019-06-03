@@ -173,7 +173,10 @@ pub fn start(entry: Option<io::Result<DesktopEntry>>, arg_matches: clap::ArgMatc
 
     let app = gtk::Application::new("me.nigelbaillie.mkdesktop", Default::default())
         .expect("Failed to create GTK Application");
-
+    
+    glib::set_application_name("mkdesktop");
+    gtk::Window::set_default_icon_name("mkdesktop");
+    
     if arg_matches.is_present("new") {
         app.connect_activate(|app| editor(app, None));
     }
@@ -424,65 +427,85 @@ pub fn editor(app: &gtk::Application, entry: Option<DesktopEntry>) {
 
     cancel_button.connect_clicked(close_window);
 
-    create_button.connect_clicked(move |button| {
-        // TODO actual validation of input
+    macro_rules! submit {
+        () => {
+            {
+            // Clone components that need to be captured
+            let submitted_name = name_entry.clone();
+            let submitted_exec = exec_entry.clone();
+            let submitted_path = path_entry.clone();
+            let submitted_icon = icon_entry.clone();
+            let submitted_comment = comment_entry.clone();
+            let submitted_categories = categories_entry.clone();
+            let to_delete = old_entry_to_delete.clone();
+            move |widget| {
+                // TODO actual validation of input
 
-        let name = name_entry.get_text().expect("Please have name");
-        let exec = exec_entry.get_text().expect("Please have command");
+                let name = submitted_name.get_text().expect("Please have name");
+                let exec = submitted_exec.get_text().expect("Please have command");
 
-        let path_path = path_entry.get_filename();
-        let path = match path_path {
-            Some(val) => Some(String::from(val.to_str().expect("Couldn't get string from path path"))),
-            None      => None
-        };
+                let path_path = submitted_path.get_filename();
+                let path = match path_path {
+                    Some(val) => Some(String::from(val.to_str().expect("Couldn't get string from path path"))),
+                    None      => None
+                };
 
-        let icon_path = icon_entry.get_filename();
-        let icon = match icon_path {
-            Some(val) => Some(String::from(val.to_str().expect("Couldn't get string from icon path"))),
-            None      => None
-        };
+                let icon_path = submitted_icon.get_filename();
+                let icon = match icon_path {
+                    Some(val) => Some(String::from(val.to_str().expect("Couldn't get string from icon path"))),
+                    None      => None
+                };
 
-        let comment = comment_entry.get_text();
-        let categories = categories_entry.get_text();
+                let comment    = submitted_comment.get_text();
+                let categories = submitted_categories.get_text();
 
-        let new_entry = DesktopEntry::new(
-            &name,
-            &comment.unwrap_or(GString::from("")),
-            &path.unwrap_or_default(),
-            &exec,
-            &icon.unwrap_or_default(),
-            &categories.unwrap_or(GString::from(""))
-        );
-        
-        // Write result and save
-        match new_entry.write_to_apps_dir() {
-            Ok(()) => {}
-            Err(error) => {
-                error_dialog(error.description());
-                return;
-            }
-        };
+                let new_entry = DesktopEntry::new(
+                    &name,
+                    &comment.unwrap_or(GString::from("")),
+                    &path.unwrap_or_default(),
+                    &exec,
+                    &icon.unwrap_or_default(),
+                    &categories.unwrap_or(GString::from(""))
+                );
+                
+                // Write result and save
+                match new_entry.write_to_apps_dir() {
+                    Ok(()) => {}
+                    Err(error) => {
+                        error_dialog(error.description());
+                        return;
+                    }
+                };
 
-        // Delete old entry if we were doing an edit and the name changed.
-        match &old_entry_to_delete {
-            Some(old_entry) => {
-                if old_entry.filename() != new_entry.filename() {
-                    match old_entry.delete() {
-                        Ok(()) => {}
-                        Err(error) => {
-                            error_dialog(&format!(
-                                "Error removing old desktop entry: {}\nUnfortunately, that means you're stuck with a duplicate.",
-                                error.description()
-                            ));
+                // Delete old entry if we were doing an edit and the name changed.
+                match &to_delete {
+                    Some(old_entry) => {
+                        if old_entry.filename() != new_entry.filename() {
+                            match old_entry.delete() {
+                                Ok(()) => {}
+                                Err(error) => {
+                                    error_dialog(&format!(
+                                        "Error removing old desktop entry: {}\nUnfortunately, that means you're stuck with a duplicate.",
+                                        error.description()
+                                    ));
+                                }
+                            }
                         }
                     }
+                    None => {}
                 }
-            }
-            None => {}
-        }
 
-        window_of(button).close();
-    });
+                window_of(widget).close();
+            }
+            }
+        };
+    }
+
+    create_button.connect_clicked(submit!());
+    name_entry.connect_activate(submit!());
+    exec_entry.connect_activate(submit!());
+    comment_entry.connect_activate(submit!());
+    categories_entry.connect_activate(submit!());
 
 
     /////////////////////////////////////////////////////////

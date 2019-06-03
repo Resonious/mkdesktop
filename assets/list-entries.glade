@@ -13,9 +13,11 @@
         <property name="subtitle" translatable="yes">mkdesktop</property>
         <property name="show_close_button">True</property>
         <child>
-          <object class="GtkBox">
+          <object class="GtkButtonBox">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
+            <property name="spacing">4</property>
+            <property name="layout_style">start</property>
             <child>
               <object class="GtkButton" id="new_entry_button">
                 <property name="label">gtk-new</property>
@@ -28,6 +30,7 @@
                 <property name="expand">False</property>
                 <property name="fill">True</property>
                 <property name="position">0</property>
+                <property name="non_homogeneous">True</property>
               </packing>
             </child>
             <child>
@@ -41,6 +44,7 @@
                 <property name="expand">False</property>
                 <property name="fill">True</property>
                 <property name="position">1</property>
+                <property name="non_homogeneous">True</property>
               </packing>
             </child>
           </object>

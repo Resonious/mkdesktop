@@ -171,7 +171,7 @@ fn setup_list_ui(
 pub fn start(entry: Option<io::Result<DesktopEntry>>, arg_matches: clap::ArgMatches) {
     init();
 
-    let app = gtk::Application::new("me.nigelbaillie.mkdesktop", Default::default())
+    let app = gtk::Application::new(Some("me.nigelbaillie.mkdesktop"), Default::default())
         .expect("Failed to create GTK Application");
     
     glib::set_application_name("mkdesktop");
@@ -219,7 +219,7 @@ pub fn index(app: &gtk::Application, entries_result: io::Result<Vec<DesktopEntry
 
     let deleted_entry: Rc<Cell<Option<DesktopEntry>>> = Rc::new(Cell::new(None));
 
-    window.set_application(app);
+    window.set_application(Some(app));
 
     new_entry.connect_clicked(|w| {
         editor(&app_of(w), None);
@@ -326,7 +326,7 @@ pub fn editor(app: &gtk::Application, entry: Option<DesktopEntry>) {
     let create_button: Button = builder.get_object("create_button").unwrap();
     let cancel_button: Button = builder.get_object("cancel_button").unwrap();
 
-    window.set_application(app);
+    window.set_application(Some(app));
 
 
     /////////////////////////////////////////////////////////
@@ -405,13 +405,13 @@ pub fn editor(app: &gtk::Application, entry: Option<DesktopEntry>) {
     let header_bar = HeaderBar::new();
     header_bar.set_show_close_button(false);
     if old_entry_to_delete.is_some() {
-        header_bar.set_title("Editing Shortcut");
+        header_bar.set_title(Some("Editing Shortcut"));
     }
     else {
-        header_bar.set_title("New Shortcut");
+        header_bar.set_title(Some("New Shortcut"));
     }
     header_bar.set_has_subtitle(true);
-    header_bar.set_subtitle("mkdesktop");
+    header_bar.set_subtitle(Some("mkdesktop"));
 
     header_bar.pack_start(&cancel_button);
     header_bar.pack_end(&create_button);

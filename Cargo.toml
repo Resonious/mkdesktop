@@ -6,17 +6,32 @@ edition = "2018"
 build = "build.rs"
 
 [dependencies]
-clap = "~2.27.0"
-path_abs = "~0.4"
-dirs = "1.0.5"
-regex = "1"
-lazy_static = "1.3.0"
-gdk-pixbuf = "0.6.0"
-glib = "0.7.1"
-gio = "0.6.0"
-inotify = "0.7"
+clap = "*"
+path_abs = "*"
+dirs = "*"
+regex = "*"
+lazy_static = "*"
+gdk-pixbuf = "*"
+glib = "*"
+gio = "*"
+inotify = "*"
 
 [dependencies.gtk]
-version = "0.6.0"
+version = "*"
 features = ["v3_16"]
 
+
+[package.metadata.deb]
+copyright = "2019, Nigel Baillie <metreckk@gmail.com>"
+license-file = ["LICENSE", "3"]
+extended-description = """\
+A simple command-line and GUI utility for creating custom
+desktop launchers."""
+depends = "$auto, xdg-utils"
+section = "utility"
+priority = "optional"
+assets = [
+    ["target/release/mkdesktop", "usr/bin/", "755"],
+    ["assets/icon.svg", "/usr/share/icons/hicolor/128x128/apps/mkdesktop.svg", "644"],
+    ["mkdesktop.desktop", "usr/share/applications/", "644"],
+]

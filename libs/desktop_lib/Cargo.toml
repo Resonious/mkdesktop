@@ -1,0 +1,23 @@
+[package]
+name = "desktop_lib"
+version = "0.1.0"
+authors = ["Nigel Baillie <metreckk@gmail.com>"]
+edition = "2018"
+build = "build.rs"
+
+[dependencies]
+clap = "*"
+path_abs = "*"
+dirs = "*"
+regex = "*"
+lazy_static = "*"
+gdk-pixbuf = "*"
+glib = "*"
+gio = "*"
+inotify = "*"
+
+[dependencies.gtk]
+version = "*"
+features = ["v3_16"]
+
+

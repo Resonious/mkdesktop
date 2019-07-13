@@ -3,23 +3,12 @@ name = "mkdesktop"
 version = "0.1.0"
 authors = ["Nigel Baillie <metreckk@gmail.com>"]
 edition = "2018"
-build = "build.rs"
+#build = "build.rs"
 
 [dependencies]
 clap = "*"
-path_abs = "*"
-dirs = "*"
-regex = "*"
-lazy_static = "*"
-gdk-pixbuf = "*"
-glib = "*"
-gio = "*"
-inotify = "*"
-
-[dependencies.gtk]
-version = "*"
-features = ["v3_16"]
-
+desktop_lib = { path = 'libs/desktop_lib' }
+#mkdesktop-nautilus = { path = 'libs/mkdesktop-nautilus' }
 
 [package.metadata.deb]
 copyright = "2019, Nigel Baillie <metreckk@gmail.com>"

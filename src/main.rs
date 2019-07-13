@@ -1,13 +1,9 @@
 #[macro_use]
 extern crate clap;
-#[macro_use]
-extern crate lazy_static;
-extern crate path_abs;
-extern crate dirs;
+extern crate desktop_lib;
 
-pub mod desktop;
-pub mod cli;
-pub mod gui;
+use desktop_lib::{cli, desktop, gui};
+
 
 fn main() {
     let arg_matches: clap::ArgMatches = clap_app!(myapp =>

@@ -7,8 +7,8 @@ edition = "2018"
 
 [dependencies]
 clap = "*"
-desktop_lib = { path = 'libs/desktop_lib' }
-#mkdesktop-nautilus = { path = 'libs/mkdesktop-nautilus' }
+desktop_lib = { path = 'libs/desktop-lib' }
+#mkdesktop_nautilus = { path = 'libs/mkdesktop-nautilus' }
 
 [package.metadata.deb]
 copyright = "2019, Nigel Baillie <metreckk@gmail.com>"
@@ -16,7 +16,7 @@ license-file = ["LICENSE", "3"]
 extended-description = """\
 A simple command-line and GUI utility for creating custom
 desktop launchers."""
-depends = "$auto, xdg-utils"
+depends = "$auto, xdg-utils, libnautilus-extension1a (>= 1:3.18.0)"
 section = "utility"
 priority = "optional"
 assets = [

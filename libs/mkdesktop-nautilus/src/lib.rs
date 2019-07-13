@@ -1,7 +1,5 @@
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
-    }
-}
+#[macro_use(nautilus_module, nautilus_menu_item_activate_cb)]
+extern crate nautilus_extension;
+extern crate desktop_lib;
+
+// TODO

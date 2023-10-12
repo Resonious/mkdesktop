@@ -7,7 +7,7 @@ edition = "2018"
 
 [dependencies]
 clap = "*"
-desktop_lib = { path = 'libs/desktop-lib' }
+desktop-lib = { path = 'libs/desktop-lib' }
 #mkdesktop_nautilus = { path = 'libs/mkdesktop-nautilus' }
 
 [package.metadata.deb]
